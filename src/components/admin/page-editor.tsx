@@ -28,10 +28,6 @@ export function PageEditor({ page }: { page: Page | null }) {
     }
   }, [page]);
 
-  useEffect(() => {
-    if (!slugEdited) setSlug(slugify(title));
-  }, [title, slugEdited]);
-
   const runCmd = (cmd: string) => {
     editorRef.current?.focus();
     if (cmd === "h2") document.execCommand("formatBlock", false, "h2");
@@ -85,7 +81,10 @@ export function PageEditor({ page }: { page: Page | null }) {
                 className="editor-title"
                 placeholder="Page title…"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (!slugEdited) setSlug(slugify(e.target.value));
+                }}
               />
 
               <div className="form-group" style={{ marginBottom: 16 }}>
