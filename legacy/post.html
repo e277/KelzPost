@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post — The Journal</title>
+  <link rel="stylesheet" href="blog.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="blog-header">
+    <nav class="blog-nav">
+      <a href="index.html" class="blog-logo" id="navLogo">
+        <div class="blog-logo__mark" id="logoMark">J</div>
+        <div class="blog-logo__text" id="logoText">The<span>Journal</span></div>
+      </a>
+      <div class="blog-nav__links">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="postContent">
+    <!-- Rendered by JS -->
+  </main>
+
+  <footer class="site-footer" id="siteFooter"></footer>
+
+  <script src="blog.js"></script>
+  <script>
+    const settings = getSettings();
+    const id = getParam('id');
+    const post = id ? getPost(id) : null;
+    const container = document.getElementById('postContent');
+
+    // Apply branding
+    document.getElementById('logoMark').textContent = (settings.blogTitle || 'J')[0].toUpperCase();
+    document.getElementById('logoText').innerHTML    = settings.blogTitle.replace(/\s+(\S+)$/, '<span>$1</span>') || 'The<span>Journal</span>';
+    renderSiteFooter('siteFooter', settings);
+
+    if (!post || post.status !== 'published') {
+      document.title = `Not Found — ${settings.blogTitle}`;
+      container.innerHTML = `
+        <div class="post-wrapper" style="text-align:center; padding-top: 80px">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" width="56" height="56" style="margin:0 auto 24px;opacity:.3"><circle cx="24" cy="24" r="20"/><path d="M15 24h18M24 15v18" stroke-width="2"/></svg>
+          <h1 style="font-family:var(--font-display);font-size:2rem;color:var(--navy);margin-bottom:12px">Post Not Found</h1>
+          <p style="color:var(--gray-400);margin-bottom:32px">This article doesn't exist or hasn't been published yet.</p>
+          <a href="index.html" class="btn btn--navy">← Back to Blog</a>
+        </div>`;
+    } else {
+      document.title = `${post.title} — ${settings.blogTitle}`;
+
+      const cover = post.coverImage
+        ? `<img src="${post.coverImage}" alt="${post.title}" class="post-cover" />`
+        : '';
+
+      container.innerHTML = `
+        <div class="post-wrapper">
+          <a href="index.html" class="post-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to Blog
+          </a>
+
+          ${cover}
+
+          <header class="post-header">
+            ${post.category ? `<span class="badge ${categoryBadgeClass(post.category, settings)}">${post.category}</span>` : ''}
+            <h1 class="post-title">${post.title}</h1>
+            <div class="post-meta">
+              <span>By <strong>${post.author || settings.authorName}</strong></span>
+              <span class="post-meta-divider"></span>
+              <span>${formatDate(post.publishedAt || post.createdAt)}</span>
+              ${post.updatedAt && post.updatedAt !== post.createdAt
+                ? `<span class="post-meta-divider"></span><span>Updated ${formatDate(post.updatedAt)}</span>`
+                : ''}
+            </div>
+          </header>
+
+          <div class="post-body">
+            ${post.content || '<p>No content available.</p>'}
+          </div>
+
+          <footer class="post-footer">
+            <a href="index.html" class="post-footer__back">← Back to Blog</a>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:.82rem;color:var(--gray-400)">Share:</span>
+              <button onclick="copyLink()" class="btn btn--ghost btn--sm">Copy Link</button>
+            </div>
+          </footer>
+        </div>`;
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(window.location.href).then(() => showToast('Link copied!'));
+    }
+  </script>
+</body>
+</html>
