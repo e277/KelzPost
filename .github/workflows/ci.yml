@@ -42,7 +42,12 @@ jobs:
 
       - run: npm ci # also runs `prisma generate`
       - name: Check schema and migrations are in sync
-        run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$DATABASE_URL" --exit-code
+        # Uses a separate scratch database: the shadow DB is left with the migrated schema.
+        env:
+          SHADOW_DATABASE_URL: postgresql://blog:blog@localhost:5432/blog_shadow
+        run: |
+          PGPASSWORD=blog psql -h localhost -U blog -d blog -c 'CREATE DATABASE blog_shadow'
+          npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
       - run: npx prisma migrate deploy
       - run: npm run db:seed
       - run: npm run lint
