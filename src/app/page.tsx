@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { HomeContent } from "@/components/home-content";
@@ -6,19 +7,15 @@ import { HomeContent } from "@/components/home-content";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const settings = await prisma.settings.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { id: 1 },
-  });
+  const settings = await getSettings();
 
   const [posts, categories] = await Promise.all([
-    prisma.post.findMany({
-      where: { status: "published" },
-      include: { category: true },
-      orderBy: { createdAt: "desc" },
+    db.query.posts.findMany({
+      where: (p, { eq }) => eq(p.status, "published"),
+      with: { category: true },
+      orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
     }),
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),
   ]);
 
   const heroLayout = settings.heroLayout === "split" ? "split" : "centered";

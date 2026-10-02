@@ -1,27 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, posts } from "@/db";
 import { getSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
-  const status = req.nextUrl.searchParams.get("status");
+  const requested = req.nextUrl.searchParams.get("status");
   const session = await getSession();
 
-  const where: { status?: string } = {};
-  if (status === "published" || status === "draft") {
-    where.status = status;
-  } else if (!session) {
-    // Unauthenticated requests may only see published posts
-    where.status = "published";
-  }
+  // Signed-out visitors only ever see published posts.
+  const status = !session ? "published" : requested === "published" || requested === "draft" ? requested : null;
 
-  const posts = await prisma.post.findMany({
-    where,
-    include: { category: true },
-    orderBy: { createdAt: "desc" },
+  const rows = await db.query.posts.findMany({
+    where: status ? eq(posts.status, status) : undefined,
+    with: { category: true },
+    orderBy: (p, { desc }) => desc(p.createdAt),
   });
 
-  return NextResponse.json(posts);
+  return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
@@ -33,15 +29,16 @@ export async function POST(req: NextRequest) {
   if (!title) return NextResponse.json({ error: "Title is required." }, { status: 400 });
 
   const status = body.status === "published" ? "published" : "draft";
-  const baseSlug = slugify(title) || "post";
+  const baseSlug = slugify(typeof body.slug === "string" && body.slug.trim() ? body.slug : title) || "post";
   let slug = baseSlug;
   let n = 1;
-  while (await prisma.post.findUnique({ where: { slug } })) {
+  while (await db.query.posts.findFirst({ where: eq(posts.slug, slug), columns: { id: true } })) {
     slug = `${baseSlug}-${++n}`;
   }
 
-  const post = await prisma.post.create({
-    data: {
+  const [created] = await db
+    .insert(posts)
+    .values({
       title,
       slug,
       excerpt: body.excerpt || "",
@@ -51,9 +48,9 @@ export async function POST(req: NextRequest) {
       author: body.author || "",
       categoryId: body.categoryId || null,
       publishedAt: status === "published" ? new Date() : null,
-    },
-    include: { category: true },
-  });
+    })
+    .returning();
 
+  const post = await db.query.posts.findFirst({ where: eq(posts.id, created.id), with: { category: true } });
   return NextResponse.json(post, { status: 201 });
 }

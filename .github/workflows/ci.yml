@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: blog
+          POSTGRES_PASSWORD: blog
+          POSTGRES_DB: blog
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U blog"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://blog:blog@localhost:5432/blog
+      DATABASE_URL_UNPOOLED: postgresql://blog:blog@localhost:5432/blog
+      SESSION_SECRET: ci-only-not-a-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - name: Check schema and migrations are in sync
+        run: |
+          npx drizzle-kit check
+          npx drizzle-kit generate
+          if ! git diff --quiet -- drizzle || [ -n "$(git ls-files --others --exclude-standard drizzle)" ]; then
+            echo "::error::src/db/schema.ts has changes without a migration. Run 'npm run db:generate' and commit the result."
+            git status --short drizzle
+            exit 1
+          fi
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build

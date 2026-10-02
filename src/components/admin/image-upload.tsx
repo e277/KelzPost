@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { prepareImage } from "@/lib/image";
 
 export function ImageUpload({
   value,
@@ -17,18 +18,12 @@ export function ImageUpload({
   const [dragOver, setDragOver] = useState(false);
   const [showUrlField, setShowUrlField] = useState(Boolean(value) && !value.startsWith("data:"));
 
-  const handleFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      onError?.("Please select an image file.");
-      return;
+  const handleFile = async (file: File) => {
+    try {
+      onChange(await prepareImage(file, round ? 512 : 1600));
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : "Could not process that image.");
     }
-    if (file.size > 5 * 1024 * 1024) {
-      onError?.("Image must be under 5 MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => onChange(String(e.target?.result || ""));
-    reader.readAsDataURL(file);
   };
 
   const remove = () => {
@@ -66,7 +61,7 @@ export function ImageUpload({
           <p>
             <strong>Click to upload</strong> or drag &amp; drop
             <br />
-            PNG, JPG, WEBP up to 5 MB
+            PNG, JPG, WEBP, GIF — large photos are resized automatically
           </p>
         </div>
       )}

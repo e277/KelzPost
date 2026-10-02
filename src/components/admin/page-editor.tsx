@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Page } from "@prisma/client";
+import type { Page } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { slugify } from "@/lib/utils";
 
@@ -27,10 +27,6 @@ export function PageEditor({ page }: { page: Page | null }) {
       editorRef.current.innerHTML = page.content;
     }
   }, [page]);
-
-  useEffect(() => {
-    if (!slugEdited) setSlug(slugify(title));
-  }, [title, slugEdited]);
 
   const runCmd = (cmd: string) => {
     editorRef.current?.focus();
@@ -85,7 +81,10 @@ export function PageEditor({ page }: { page: Page | null }) {
                 className="editor-title"
                 placeholder="Page title…"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (!slugEdited) setSlug(slugify(e.target.value));
+                }}
               />
 
               <div className="form-group" style={{ marginBottom: 16 }}>

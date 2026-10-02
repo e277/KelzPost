@@ -1,0 +1,40 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { db } from "@/db";
+import { getSettings } from "@/lib/site";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { PostArticle } from "@/components/post-article";
+
+export const dynamic = "force-dynamic";
+export const metadata = { robots: { index: false } };
+
+/** Admin-only preview of any post (drafts included), rendered exactly like the public page. */
+export default async function PreviewPostPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const [settings, categories, post] = await Promise.all([
+    getSettings(),
+    db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),
+    db.query.posts.findFirst({ where: (p, { eq }) => eq(p.id, id), with: { category: true } }),
+  ]);
+
+  if (!post) notFound();
+
+  return (
+    <>
+      <div className="preview-banner">
+        <span>
+          <strong>Preview</strong> — {post.status === "published" ? "this post is live." : "this draft is not visible to visitors."}
+        </span>
+        <Link href={`/admin/posts/${post.id}`}>← Back to editor</Link>
+      </div>
+      <SiteHeader settings={settings} />
+      <main>
+        <div className="post-wrapper">
+          <PostArticle post={post} categories={categories} authorName={settings.authorName} />
+        </div>
+      </main>
+      <SiteFooter settings={settings} />
+    </>
+  );
+}

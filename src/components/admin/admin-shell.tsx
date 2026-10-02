@@ -20,21 +20,8 @@ export function AdminShell({
   const last = words.pop() || "";
   const lead = words.join(" ");
 
-  return (
-    <div className="admin-shell">
-      <aside className="admin-sidebar">
-        <div className="admin-sidebar__logo">
-          <div className="blog-logo">
-            <div className="blog-logo__mark">{name[0]?.toUpperCase() || "J"}</div>
-            <div className="blog-logo__text">
-              {lead ? `${lead} ` : ""}
-              <span style={{ color: "var(--gold)" }}>{last}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="admin-sidebar__label">Main Menu</div>
-        <nav className="admin-sidebar__nav">
+  const navItems = (
+    <>
           <Link href="/admin" className={active === "dashboard" ? "active" : ""}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
               <rect x="3" y="3" width="7" height="7" />
@@ -76,7 +63,24 @@ export function AdminShell({
             </svg>
             View Blog
           </Link>
-        </nav>
+    </>
+  );
+
+  return (
+    <div className="admin-shell">
+      <aside className="admin-sidebar">
+        <div className="admin-sidebar__logo">
+          <div className="blog-logo">
+            <div className="blog-logo__mark">{name[0]?.toUpperCase() || "J"}</div>
+            <div className="blog-logo__text">
+              {lead ? `${lead} ` : ""}
+              <span style={{ color: "var(--gold)" }}>{last}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-sidebar__label">Main Menu</div>
+        <nav className="admin-sidebar__nav">{navItems}</nav>
 
         <div className="admin-sidebar__footer">
           <LogoutButton />
@@ -84,6 +88,13 @@ export function AdminShell({
       </aside>
 
       <div className="admin-content">
+        <div className="admin-mobilebar">
+          <nav className="admin-mobilebar__nav" aria-label="Admin">
+            {navItems}
+            <LogoutButton />
+          </nav>
+        </div>
+
         <div className="admin-topbar">
           <h1 className="admin-topbar__title">{title}</h1>
           <div className="admin-topbar__actions">{actions}</div>

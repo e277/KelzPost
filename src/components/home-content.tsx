@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import type { Category, Post, Settings } from "@prisma/client";
+import type { Category, Post, Settings } from "@/db/schema";
+import { stripHtml } from "@/lib/utils";
 import { PostCard } from "./post-card";
+
+const PAGE_SIZE = 9;
 
 type PostWithCategory = Post & { category: Category | null };
 
@@ -18,18 +20,30 @@ export function HomeContent({
 }) {
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("all");
+  const [visible, setVisible] = useState(PAGE_SIZE);
   const layout = settings.postsLayout === "list" ? "list" : "grid";
 
   const postCats = useMemo(() => {
     return [...new Set(posts.map((p) => p.category?.name).filter((c): c is string => Boolean(c)))];
   }, [posts]);
 
+  const searchIndex = useMemo(
+    () => new Map(posts.map((p) => [p.id, `${p.title} ${p.excerpt} ${p.category?.name || ""} ${stripHtml(p.content)}`.toLowerCase()])),
+    [posts]
+  );
+
+  const q = search.trim().toLowerCase();
   const filtered = posts.filter((p) => {
     const matchCat = activeCat === "all" || p.category?.name === activeCat;
-    const q = search.trim().toLowerCase();
-    const matchSearch = !q || p.title.toLowerCase().includes(q) || (p.excerpt || "").toLowerCase().includes(q);
+    const matchSearch = !q || q.split(/\s+/).every((term) => searchIndex.get(p.id)?.includes(term));
     return matchCat && matchSearch;
   });
+  const shown = filtered.slice(0, visible);
+
+  const selectCategory = (c: string) => {
+    setActiveCat(c);
+    setVisible(PAGE_SIZE);
+  };
 
   return (
     <>
@@ -43,15 +57,19 @@ export function HomeContent({
             type="text"
             placeholder="Search articles…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setVisible(PAGE_SIZE);
+            }}
+            aria-label="Search articles"
           />
         </div>
         <div className="blog-filter">
-          <button className={`filter-btn${activeCat === "all" ? " active" : ""}`} onClick={() => setActiveCat("all")}>
+          <button className={`filter-btn${activeCat === "all" ? " active" : ""}`} onClick={() => selectCategory("all")}>
             All
           </button>
           {postCats.map((c) => (
-            <button key={c} className={`filter-btn${activeCat === c ? " active" : ""}`} onClick={() => setActiveCat(c)}>
+            <button key={c} className={`filter-btn${activeCat === c ? " active" : ""}`} onClick={() => selectCategory(c)}>
               {c}
             </button>
           ))}
@@ -68,17 +86,26 @@ export function HomeContent({
               </svg>
               <p>
                 {posts.length === 0 ? (
-                  <>
-                    No posts yet.{" "}
-                    <Link href="/admin">Write your first post →</Link>
-                  </>
+                  "No posts yet — check back soon."
                 ) : (
-                  "No articles match your search."
+                  <>
+                    No articles match your search.{" "}
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => {
+                        setSearch("");
+                        selectCategory("all");
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  </>
                 )}
               </p>
             </div>
           ) : (
-            filtered.map((post, i) => (
+            shown.map((post, i) => (
               <PostCard
                 key={post.id}
                 post={post}
@@ -90,6 +117,13 @@ export function HomeContent({
             ))
           )}
         </div>
+        {filtered.length > shown.length && (
+          <div className="load-more">
+            <button type="button" className="btn btn--ghost" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+              Load more articles ({filtered.length - shown.length} more)
+            </button>
+          </div>
+        )}
       </main>
     </>
   );

@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { SettingsForm } from "@/components/admin/settings-form";
 
@@ -6,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
   const [settings, categories] = await Promise.all([
-    prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } }),
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    getSettings(),
+    db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),
   ]);
 
   return (
