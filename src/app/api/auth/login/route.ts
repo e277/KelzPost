@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, adminUsers } from "@/db";
-import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
+import { createSessionToken, hasSessionSecret, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 import { clientIp, rateLimit, resetRateLimit } from "@/lib/rate-limit";
 
 const MAX_ATTEMPTS = 5;
@@ -13,6 +13,13 @@ const WINDOW_MS = 15 * 60 * 1000;
 const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 
 export async function POST(req: NextRequest) {
+  if (!hasSessionSecret()) {
+    return NextResponse.json(
+      { error: "The server is missing its SESSION_SECRET setting. Add it in Vercel (Settings → Environment Variables) and redeploy." },
+      { status: 500 }
+    );
+  }
+
   const key = `login:${clientIp(req.headers)}`;
   const limit = await rateLimit(key, MAX_ATTEMPTS, WINDOW_MS);
   if (!limit.allowed) {
