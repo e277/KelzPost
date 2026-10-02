@@ -2,14 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { count, sql } from "drizzle-orm";
 import { db, adminUsers, categories, settings } from "@/db";
-import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
+import { createSessionToken, hasSessionSecret, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS } from "@/lib/defaults";
+
+const MISSING_SECRET =
+  "The server is missing its SESSION_SECRET setting. Add it in Vercel (Settings → Environment Variables) and redeploy.";
 
 /**
  * First-run setup: creates the admin account. Only works while no admin
  * account exists, so it can't be used to take over an existing blog.
  */
 export async function POST(req: NextRequest) {
+  // Check before writing anything, so a misconfigured server can't leave an account behind.
+  if (!hasSessionSecret()) return NextResponse.json({ error: MISSING_SECRET }, { status: 500 });
+
   const body = await req.json().catch(() => ({}));
   const username = typeof body.username === "string" ? body.username.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";

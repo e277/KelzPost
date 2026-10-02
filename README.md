@@ -45,13 +45,21 @@ managed from the built-in admin panel. No content is hardcoded.
 2. **Add a database.** In the project, open **Storage → Create Database → Neon
    (Postgres)** and connect it to the project. This sets `DATABASE_URL` and
    `DATABASE_URL_UNPOOLED` for you.
-3. **Add environment variables** under **Settings → Environment Variables**:
+3. **Add environment variables in Vercel** (not GitHub): in your Vercel project, open
+   **Settings → Environment Variables**, add each variable, and tick at least the
+   **Production** environment.
    - `SESSION_SECRET`: a long random string. Generate one with
      `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
    - `SITE_URL` (optional): your public URL if you use a custom domain, e.g.
      `https://blog.example.com`. Otherwise the Vercel production domain is used.
+
+   > GitHub's repository **Settings → Environments** and **Secrets** are only for GitHub
+   > Actions; the Vercel site never sees them. The "Production"/"Preview" environments
+   > Vercel shows in GitHub are deployment records, not settings.
 4. **Deploy.** The build runs `drizzle-kit migrate` (the `vercel-build` script), so
-   the database tables are created automatically.
+   the database tables are created automatically. Vercel only picks up new or changed
+   environment variables on the next deployment, so **redeploy after changing them**
+   (Deployments → ⋯ on the latest one → **Redeploy**).
 5. **Visit `/admin/login`** and create your admin account.
 
 > Every deployment, previews included, runs migrations against the `DATABASE_URL` it is

@@ -3,6 +3,11 @@ import { cookies } from "next/headers";
 const SESSION_COOKIE = "blog_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+/** Whether SESSION_SECRET is configured; without it nobody can sign in. */
+export function hasSessionSecret(): boolean {
+  return Boolean(process.env.SESSION_SECRET);
+}
+
 function getSecret(): string {
   const s = process.env.SESSION_SECRET;
   if (!s) throw new Error("SESSION_SECRET is not set");
