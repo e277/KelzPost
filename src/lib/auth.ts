@@ -41,6 +41,16 @@ async function sign(value: string): Promise<string> {
   return toBase64Url(sig);
 }
 
+// crypto.subtle.verify compares in constant time, unlike string equality.
+async function verify(value: string, signature: string): Promise<boolean> {
+  try {
+    const key = await hmacKey();
+    return await crypto.subtle.verify("HMAC", key, fromBase64Url(signature) as BufferSource, new TextEncoder().encode(value));
+  } catch {
+    return false;
+  }
+}
+
 export async function createSessionToken(username: string): Promise<string> {
   const payload = JSON.stringify({ u: username, exp: Date.now() + SESSION_MAX_AGE * 1000 });
   const encoded = toBase64Url(new TextEncoder().encode(payload));
@@ -53,8 +63,7 @@ export async function verifySessionToken(token: string | undefined): Promise<{ u
   const [encoded, signature] = token.split(".");
   if (!encoded || !signature) return null;
 
-  const expected = await sign(encoded);
-  if (expected.length !== signature.length || expected !== signature) return null;
+  if (!(await verify(encoded, signature))) return null;
 
   try {
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(encoded)));

@@ -1,109 +1,150 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { getSettings, absoluteUrl } from "@/lib/site";
+import { summarize, readingTime } from "@/lib/utils";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { CopyLinkButton } from "@/components/copy-link-button";
-import { formatDate, categoryBadgeClass } from "@/lib/utils";
+import { PostArticle } from "@/components/post-article";
+import { PostCard } from "@/components/post-card";
+import { ShareButtons } from "@/components/share-buttons";
+import { ReadingProgress } from "@/components/reading-progress";
 
-async function getData(slug: string) {
-  const [settings, categories, post] = await Promise.all([
-    prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } }),
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
-    prisma.post.findUnique({ where: { slug }, include: { category: true } }),
-  ]);
-  return { settings, categories, post };
+async function getPublishedPost(slug: string) {
+  const post = await prisma.post.findUnique({ where: { slug }, include: { category: true } });
+  return post?.status === "published" ? post : null;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const { settings, post } = await getData(slug);
-  if (!post || post.status !== "published") {
-    return { title: `Not Found — ${settings.blogTitle}` };
-  }
-  return { title: `${post.title} — ${settings.blogTitle}` };
+  const [settings, post] = await Promise.all([getSettings(), getPublishedPost(slug)]);
+  if (!post) return { title: `Not Found — ${settings.blogTitle}` };
+
+  const description = summarize(post.excerpt, post.content);
+  const url = absoluteUrl(`/post/${post.slug}`);
+  // Data-URL images can't be used as Open Graph images.
+  const image = post.coverImage && !post.coverImage.startsWith("data:") ? post.coverImage : undefined;
+
+  return {
+    title: `${post.title} — ${settings.blogTitle}`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description,
+      url,
+      siteName: settings.blogTitle,
+      publishedTime: (post.publishedAt || post.createdAt).toISOString(),
+      modifiedTime: post.updatedAt.toISOString(),
+      authors: [post.author || settings.authorName],
+      section: post.category?.name,
+      images: image ? [image] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title: post.title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
 }
 
 export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { settings, categories, post } = await getData(slug);
+  const [settings, categories, post] = await Promise.all([
+    getSettings(),
+    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    getPublishedPost(slug),
+  ]);
+
+  if (!post) notFound();
+
+  // Chronological neighbours and up to 3 related posts (same category first, then most recent).
+  const published = await prisma.post.findMany({
+    where: { status: "published" },
+    include: { category: true },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+  });
+  const index = published.findIndex((p) => p.id === post.id);
+  const newer = index > 0 ? published[index - 1] : null;
+  const older = index >= 0 && index < published.length - 1 ? published[index + 1] : null;
+  const others = published.filter((p) => p.id !== post.id);
+  const related = [
+    ...others.filter((p) => post.categoryId && p.categoryId === post.categoryId),
+    ...others.filter((p) => !post.categoryId || p.categoryId !== post.categoryId),
+  ].slice(0, 3);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: summarize(post.excerpt, post.content),
+    datePublished: (post.publishedAt || post.createdAt).toISOString(),
+    dateModified: post.updatedAt.toISOString(),
+    author: { "@type": "Person", name: post.author || settings.authorName },
+    mainEntityOfPage: absoluteUrl(`/post/${post.slug}`),
+    timeRequired: `PT${readingTime(post.content)}M`,
+  };
 
   return (
     <>
+      <ReadingProgress />
       <SiteHeader settings={settings} />
 
       <main>
-        {!post || post.status !== "published" ? (
-          <div className="post-wrapper" style={{ textAlign: "center", paddingTop: 80 }}>
-            <svg
-              viewBox="0 0 48 48"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              width="56"
-              height="56"
-              style={{ margin: "0 auto 24px", opacity: 0.3 }}
-            >
-              <circle cx="24" cy="24" r="20" />
-              <path d="M15 24h18M24 15v18" strokeWidth={2} />
+        <div className="post-wrapper">
+          <Link href="/" className="post-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
+              <polyline points="15 18 9 12 15 6" />
             </svg>
-            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "2rem", color: "var(--navy)", marginBottom: 12 }}>
-              Post Not Found
-            </h1>
-            <p style={{ color: "var(--gray-400)", marginBottom: 32 }}>
-              This article doesn&apos;t exist or hasn&apos;t been published yet.
-            </p>
-            <Link href="/" className="btn btn--navy">
+            Back to Blog
+          </Link>
+
+          <PostArticle post={post} categories={categories} authorName={settings.authorName} />
+
+          <footer className="post-footer">
+            <Link href="/" className="post-footer__back">
               ← Back to Blog
             </Link>
-          </div>
-        ) : (
-          <div className="post-wrapper">
-            <Link href="/" className="post-back">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-              Back to Blog
-            </Link>
+            <ShareButtons title={post.title} />
+          </footer>
 
-            {post.coverImage && <img src={post.coverImage} alt={post.title} className="post-cover" />}
-
-            <header className="post-header">
-              {post.category && (
-                <span className={`badge ${categoryBadgeClass(post.category.name, categories)}`}>{post.category.name}</span>
+          {(newer || older) && (
+            <nav className="post-nav" aria-label="More posts">
+              {older ? (
+                <Link href={`/post/${older.slug}`} className="post-nav__link">
+                  <span className="post-nav__dir">← Previous</span>
+                  <span className="post-nav__title">{older.title}</span>
+                </Link>
+              ) : (
+                <span />
               )}
-              <h1 className="post-title">{post.title}</h1>
-              <div className="post-meta">
-                <span>
-                  By <strong>{post.author || settings.authorName}</strong>
-                </span>
-                <span className="post-meta-divider" />
-                <span>{formatDate(post.publishedAt || post.createdAt)}</span>
-                {post.updatedAt && post.updatedAt.getTime() !== post.createdAt.getTime() && (
-                  <>
-                    <span className="post-meta-divider" />
-                    <span>Updated {formatDate(post.updatedAt)}</span>
-                  </>
-                )}
-              </div>
-            </header>
+              {newer && (
+                <Link href={`/post/${newer.slug}`} className="post-nav__link post-nav__link--next">
+                  <span className="post-nav__dir">Next →</span>
+                  <span className="post-nav__title">{newer.title}</span>
+                </Link>
+              )}
+            </nav>
+          )}
+        </div>
 
-            <div className="post-body" dangerouslySetInnerHTML={{ __html: post.content || "<p>No content available.</p>" }} />
-
-            <footer className="post-footer">
-              <Link href="/" className="post-footer__back">
-                ← Back to Blog
-              </Link>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: ".82rem", color: "var(--gray-400)" }}>Share:</span>
-                <CopyLinkButton />
-              </div>
-            </footer>
-          </div>
+        {related.length > 0 && (
+          <section className="related">
+            <h2 className="related__title">Keep reading</h2>
+            <div className="posts-grid related__grid">
+              {related.map((p) => (
+                <PostCard key={p.id} post={p} categories={categories} authorName={settings.authorName} />
+              ))}
+            </div>
+          </section>
         )}
       </main>
 
       <SiteFooter settings={settings} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     </>
   );
 }

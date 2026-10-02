@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
-import { prisma } from "@/lib/prisma";
+import { getSettings, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,21 +15,25 @@ const playfair = Playfair_Display({
   weight: ["700", "800"],
 });
 
-export const metadata: Metadata = {
-  title: "Systems and Safeguards",
-  description: "Insights, stories, and ideas worth reading.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: settings.blogTitle,
+    description: settings.tagline,
+    openGraph: { type: "website", siteName: settings.blogTitle, title: settings.blogTitle, description: settings.tagline },
+    alternates: {
+      types: { "application/rss+xml": [{ url: `${SITE_URL}/feed.xml`, title: `${settings.blogTitle} RSS` }] },
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await prisma.settings.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { id: 1 },
-  });
+  const settings = await getSettings();
 
   const themeVars = `:root{--navy:${settings.navyColor};--gold:${settings.accentColor};}`;
 

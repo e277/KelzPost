@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Category, Post } from "@prisma/client";
 import { useToast } from "@/components/toast";
+import { slugify, wordCount } from "@/lib/utils";
+import { prepareImage } from "@/lib/image";
 import { ImageUpload } from "./image-upload";
 
 type PostWithCategory = Post & { category: Category | null };
@@ -33,7 +36,13 @@ export function PostEditor({
   const [categoryId, setCategoryId] = useState(post?.categoryId || "");
   const [excerpt, setExcerpt] = useState(post?.excerpt || "");
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
+  const [slug, setSlug] = useState(post?.slug || "");
+  const [slugEdited, setSlugEdited] = useState(!!post);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [words, setWords] = useState(() => wordCount(post?.content || ""));
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editorRef.current && post?.content) {
@@ -41,25 +50,63 @@ export function PostEditor({
     }
   }, [post]);
 
+  // Warn before leaving the page with unsaved changes.
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  const markDirty = () => setDirty(true);
+
+  const onContentInput = () => {
+    setWords(wordCount(editorRef.current?.innerHTML || ""));
+    markDirty();
+  };
+
+  const insertImage = async (file: File) => {
+    try {
+      const src = await prepareImage(file);
+      editorRef.current?.focus();
+      document.execCommand("insertImage", false, src);
+      onContentInput();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Could not insert image.", "error");
+    }
+  };
+
   const runCmd = (cmd: string) => {
     editorRef.current?.focus();
     if (cmd === "h2" || cmd === "h3") {
       document.execCommand("formatBlock", false, cmd);
     } else if (cmd === "blockquote") {
       document.execCommand("formatBlock", false, "blockquote");
+    } else if (cmd === "pre") {
+      document.execCommand("formatBlock", false, "pre");
+    } else if (cmd === "p") {
+      document.execCommand("formatBlock", false, "p");
     } else if (cmd === "createLink") {
       const url = prompt("Enter URL:");
       if (url) document.execCommand("createLink", false, url);
+    } else if (cmd === "insertImageUrl") {
+      const url = prompt("Image URL:");
+      if (url) document.execCommand("insertImage", false, url);
     } else {
       document.execCommand(cmd, false);
     }
+    onContentInput();
   };
 
-  const save = async (newStatus: string) => {
+  const save = useCallback(async (newStatus: string) => {
+    if (saving) return;
     if (!title.trim()) {
       showToast("Please add a title.", "error");
       return;
     }
+    setSaving(true);
 
     const payload = {
       title: title.trim(),
@@ -69,14 +116,30 @@ export function PostEditor({
       status: newStatus,
       author: author.trim() || defaultAuthor,
       categoryId: categoryId || null,
+      slug: slug || slugify(title),
     };
+
+    const body = JSON.stringify(payload);
+    // Vercel rejects request bodies over 4.5 MB.
+    if (body.length > 4_200_000) {
+      setSaving(false);
+      showToast("This post is too large to save — try removing or using URLs for some images.", "error");
+      return;
+    }
 
     const res = await fetch(post ? `/api/posts/${post.id}` : "/api/posts", {
       method: post ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      body,
+    }).catch(() => null);
 
+    if (!res) {
+      setSaving(false);
+      showToast("Network error — your changes were not saved.", "error");
+      return;
+    }
+
+    setSaving(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       showToast(data.error || "Failed to save post.", "error");
@@ -84,19 +147,32 @@ export function PostEditor({
     }
 
     setStatus(newStatus);
+    setDirty(false);
     showToast(newStatus === "published" ? "Post published!" : "Draft saved.");
 
-    if (!post) {
-      const created = await res.json();
-      router.replace(`/admin/posts/${created.id}`);
-    }
+    const saved = await res.json();
+    setSlug(saved.slug);
+    if (!post) router.replace(`/admin/posts/${saved.id}`);
     router.refresh();
-  };
+  }, [saving, title, excerpt, coverImage, author, defaultAuthor, categoryId, slug, post, router, showToast]);
+
+  // Ctrl/Cmd+S saves, keeping the current status.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        save(status);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [save, status]);
 
   const handleDelete = async () => {
     if (!post) return;
     const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
     if (res.ok) {
+      setDirty(false);
       router.push("/admin");
     } else {
       showToast("Failed to delete post.", "error");
@@ -114,7 +190,11 @@ export function PostEditor({
                 className="editor-title"
                 placeholder="Post title…"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (!slugEdited) setSlug(slugify(e.target.value));
+                  markDirty();
+                }}
               />
 
               <div className="editor-toolbar">
@@ -161,6 +241,37 @@ export function PostEditor({
                   </svg>
                 </button>
                 <div className="toolbar-sep" />
+                <button type="button" className="toolbar-btn" title="Insert image (upload)" onMouseDown={(e) => { e.preventDefault(); imageInputRef.current?.click(); }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="m21 15-5-5L5 21" />
+                  </svg>
+                </button>
+                <button type="button" className="toolbar-btn" title="Insert image from URL" onMouseDown={(e) => { e.preventDefault(); runCmd("insertImageUrl"); }}>
+                  URL
+                </button>
+                <button type="button" className="toolbar-btn" title="Code block" onMouseDown={(e) => { e.preventDefault(); runCmd("pre"); }}>
+                  {"</>"}
+                </button>
+                <button type="button" className="toolbar-btn" title="Divider" onMouseDown={(e) => { e.preventDefault(); runCmd("insertHorizontalRule"); }}>
+                  —
+                </button>
+                <button type="button" className="toolbar-btn" title="Normal paragraph" onMouseDown={(e) => { e.preventDefault(); runCmd("p"); }}>
+                  ¶
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) insertImage(file);
+                    e.target.value = "";
+                  }}
+                />
+                <div className="toolbar-sep" />
                 <button type="button" className="toolbar-btn" title="Clear Formatting" onMouseDown={(e) => { e.preventDefault(); runCmd("removeFormat"); }}>
                   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
                     <path d="M6 4l8 12M4 4h12" />
@@ -168,7 +279,19 @@ export function PostEditor({
                 </button>
               </div>
 
-              <div ref={editorRef} className="editor-area" contentEditable data-placeholder="Start writing your article here…" />
+              <div
+                ref={editorRef}
+                className="editor-area"
+                contentEditable
+                onInput={onContentInput}
+                data-placeholder="Start writing your article here…"
+              />
+              <div className="editor-statusbar">
+                <span>
+                  {words.toLocaleString()} words · {Math.max(1, Math.round(words / 225))} min read
+                </span>
+                <span>{saving ? "Saving…" : dirty ? "Unsaved changes" : post ? "All changes saved" : ""} · Ctrl/⌘+S to save</span>
+              </div>
             </div>
           </div>
         </div>
@@ -178,23 +301,33 @@ export function PostEditor({
             <div className="editor-card__header">Post Status</div>
             <div className="editor-card__body">
               <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
-                <button type="button" className="btn btn--ghost btn--sm" style={{ flex: 1 }} onClick={() => save("draft")}>
-                  Save Draft
+                <button type="button" className="btn btn--ghost btn--sm" style={{ flex: 1 }} disabled={saving} onClick={() => save("draft")}>
+                  {status === "published" ? "Unpublish" : "Save Draft"}
                 </button>
-                <button type="button" className="btn btn--primary btn--sm" style={{ flex: 1 }} onClick={() => save("published")}>
-                  Publish
+                <button type="button" className="btn btn--primary btn--sm" style={{ flex: 1 }} disabled={saving} onClick={() => save("published")}>
+                  {status === "published" ? "Update" : "Publish"}
                 </button>
               </div>
+              {post && (
+                <Link
+                  href={post.status === "published" ? `/post/${slug}` : `/admin/posts/${post.id}/preview`}
+                  target="_blank"
+                  className="btn btn--ghost btn--sm btn--full"
+                  style={{ marginBottom: 18, justifyContent: "center" }}
+                >
+                  {post.status === "published" ? "View live post ↗" : "Preview draft ↗"}
+                </Link>
+              )}
               <div className="form-group">
                 <label htmlFor="postStatus">Status</label>
-                <select id="postStatus" value={status} onChange={(e) => setStatus(e.target.value)}>
+                <select id="postStatus" value={status} onChange={(e) => { setStatus(e.target.value); markDirty(); }}>
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
                 </select>
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label htmlFor="postAuthor">Author</label>
-                <input type="text" id="postAuthor" placeholder="Author name" value={author} onChange={(e) => setAuthor(e.target.value)} />
+                <input type="text" id="postAuthor" placeholder="Author name" value={author} onChange={(e) => { setAuthor(e.target.value); markDirty(); }} />
               </div>
             </div>
           </div>
@@ -204,7 +337,7 @@ export function PostEditor({
             <div className="editor-card__body">
               <div className="form-group">
                 <label htmlFor="postCategory">Category</label>
-                <select id="postCategory" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <select id="postCategory" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); markDirty(); }}>
                   <option value="">Select category…</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -213,6 +346,17 @@ export function PostEditor({
                   ))}
                 </select>
               </div>
+              <div className="form-group">
+                <label htmlFor="postSlug">URL slug</label>
+                <input
+                  type="text"
+                  id="postSlug"
+                  placeholder="post-url"
+                  value={slug}
+                  onChange={(e) => { setSlugEdited(true); setSlug(slugify(e.target.value)); markDirty(); }}
+                />
+                <small className="field-hint">/post/{slug || "…"}</small>
+              </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label htmlFor="postExcerpt">Excerpt</label>
                 <textarea
@@ -220,8 +364,10 @@ export function PostEditor({
                   rows={3}
                   placeholder="Short summary shown in listings…"
                   value={excerpt}
-                  onChange={(e) => setExcerpt(e.target.value)}
+                  maxLength={300}
+                  onChange={(e) => { setExcerpt(e.target.value); markDirty(); }}
                 />
+                <small className="field-hint">{excerpt.length}/300 — used in listings, search results and link previews.</small>
               </div>
             </div>
           </div>
@@ -229,7 +375,7 @@ export function PostEditor({
           <div className="editor-card">
             <div className="editor-card__header">Cover Image</div>
             <div className="editor-card__body">
-              <ImageUpload value={coverImage} onChange={setCoverImage} onError={(m) => showToast(m, "error")} />
+              <ImageUpload value={coverImage} onChange={(v) => { setCoverImage(v); markDirty(); }} onError={(m) => showToast(m, "error")} />
             </div>
           </div>
 

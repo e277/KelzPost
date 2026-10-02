@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const [settings, page] = await Promise.all([
-    prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } }),
+    getSettings(),
     prisma.page.findUnique({ where: { slug } }),
   ]);
   if (!page) return { title: `Not Found — ${settings.blogTitle}` };
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function CustomPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [settings, page] = await Promise.all([
-    prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } }),
+    getSettings(),
     prisma.page.findUnique({ where: { slug } }),
   ]);
 

@@ -1,177 +1,130 @@
 # Blog
 
-A small, fully admin-driven blog built with **Next.js (App Router, TypeScript)** and
-**Prisma + SQLite**. Everything visitors see — site title, tagline, colors, categories,
-posts, about page, and social links — is managed from the built-in admin panel. No
-content is hardcoded.
+A fully admin-driven blog built with **Next.js (App Router, TypeScript)** and
+**Prisma + PostgreSQL**, deployed on **Vercel**. Everything visitors see (site title,
+tagline, colors, navigation, categories, posts, pages, about page, social links) is
+managed from the built-in admin panel. No content is hardcoded.
+
+## Features
+
+**For readers**
+
+- Home page with search (titles, excerpts and full text), category filters and "load more"
+- Post pages with reading time, a reading-progress bar, share buttons (X, LinkedIn,
+  Facebook, email, copy link, native share), previous/next links and related posts
+- Custom pages (`/your-page`) and an About page
+- RSS feed (`/feed.xml`), `sitemap.xml`, `robots.txt`, Open Graph/Twitter cards and
+  `BlogPosting` structured data
+- Responsive layout with a mobile menu, plus a custom 404 page
+
+**For the admin**
+
+- First-run setup screen: the first visit to `/admin/login` creates the admin account
+- Login protection: a rate limit of 5 failed attempts per 15 minutes per IP, constant-time
+  session checks, an optional "keep me signed in", and a redirect back to the page you
+  were trying to open
+- Dashboard: stats, search, filter and sort, one-click publish/unpublish, draft previews
+- Editor: rich text (headings, lists, quotes, links, images, code blocks, dividers),
+  editable URL slug, word count, unsaved-changes warning, Ctrl/⌘+S to save
+- Images are resized and compressed in the browser before upload
+- Settings: branding, colors, navigation, hero, layout, author, categories, social
+  links, footer, About content, password change
+- Works on mobile
 
 ## Tech stack
 
 - **Next.js 16** (App Router, TypeScript, `src/` directory)
-- **Prisma 5** ORM with **SQLite** (`prisma/dev.db`)
-- **bcryptjs** for admin password hashing
-- Custom cookie-based session auth (Web Crypto API, works in Edge middleware)
-- Plain CSS (`src/app/globals.css`) — no UI framework
+- **Prisma 5** with **PostgreSQL** (e.g. [Neon](https://neon.tech) via the Vercel Marketplace)
+- **bcryptjs** for password hashing; signed-cookie sessions (Web Crypto)
+- Plain CSS (`src/app/globals.css`)
+
+## Deploying to Vercel
+
+1. **Import the repo** at [vercel.com/new](https://vercel.com/new). The Next.js preset
+   is detected automatically.
+2. **Add a database.** In the project, open **Storage → Create Database → Neon
+   (Postgres)** and connect it to the project. This sets `DATABASE_URL` and
+   `DATABASE_URL_UNPOOLED` for you.
+3. **Add environment variables** under **Settings → Environment Variables**:
+   - `SESSION_SECRET`: a long random string. Generate one with
+     `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - `SITE_URL` (optional): your public URL if you use a custom domain, e.g.
+     `https://blog.example.com`. Otherwise the Vercel production domain is used.
+4. **Deploy.** The build runs `prisma migrate deploy` (the `vercel-build` script), so
+   the database tables are created automatically.
+5. **Visit `/admin/login`** and create your admin account.
+
+> Every deployment, previews included, runs migrations against the `DATABASE_URL` it is
+> given. If you don't want previews to touch production data, enable Neon's preview
+> branching in the integration settings.
+
+## Local development
+
+Prerequisites: Node.js 20+, and a PostgreSQL database. Use a local Postgres, Docker
+(`docker run -e POSTGRES_USER=blog -e POSTGRES_PASSWORD=blog -p 5432:5432 postgres:16`),
+or a free Neon dev branch.
+
+```bash
+npm install                 # also generates the Prisma client
+cp .env.example .env        # then fill in DATABASE_URL(s) and SESSION_SECRET
+npm run db:deploy           # create the tables
+npm run db:seed             # optional: default settings and categories
+npm run dev
+```
+
+- Public site: http://localhost:3000
+- Admin: http://localhost:3000/admin/login (the first visit creates the admin account)
+
+`npm run db:seed` loads settings and categories from `prisma/seed-data.json`. Set
+`ADMIN_USERNAME` and `ADMIN_PASSWORD` to create an admin account at the same time.
+
+### Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Start the dev server |
+| `npm run build` / `npm start` | Production build / server |
+| `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
+| `npm run db:migrate` | Create a new migration after editing `prisma/schema.prisma` |
+| `npm run db:deploy` | Apply migrations |
+| `npm run db:seed` | Seed default settings and categories |
+| `npm run db:studio` | Browse the database with Prisma Studio |
+
+## CI
+
+`.github/workflows/ci.yml` runs on pull requests and pushes to `main`. Against a
+throwaway Postgres it checks that the migrations match the schema, applies them, seeds
+the database, and runs lint, typecheck and a production build. Vercel does the
+deploying.
 
 ## Project structure
 
 ```
 src/
   app/
-    page.tsx              # Home (post list, search & category filter)
-    post/[slug]/page.tsx  # Single post page
-    about/page.tsx        # About page
-    admin/                 # Admin panel (protected by middleware)
-      login/page.tsx
-      page.tsx             # Dashboard
-      posts/new/page.tsx
-      posts/[id]/page.tsx  # Post editor
-      settings/page.tsx
-    api/                   # REST route handlers (auth, posts, categories, settings)
-  components/              # Shared UI (site header/footer, post card, admin shell, editor, etc.)
-  lib/                      # prisma client, auth helpers, utils
-  middleware.ts            # Protects /admin/* (except /admin/login)
+    page.tsx                  # Home
+    post/[slug]/page.tsx      # Post page
+    [slug]/page.tsx           # Custom pages
+    about/page.tsx            # About page
+    feed.xml/route.ts         # RSS feed
+    sitemap.ts, robots.ts     # SEO
+    admin/                    # Admin panel (protected by src/proxy.ts)
+      login/                  # Login and first-run setup
+      posts/[id]/preview/     # Draft preview
+    api/                      # Route handlers (auth, posts, pages, categories, settings)
+  components/                 # Shared UI (public and admin)
+  lib/                        # Prisma client, auth, rate limit, site settings, utils
+  proxy.ts                    # Redirects signed-out users away from /admin/*
 prisma/
-  schema.prisma            # Settings, Category, Post, AdminUser models
-  seed.ts                  # Seeds default settings, categories, admin user
-legacy/                     # Archived original static HTML/CSS/JS site (kept for reference)
+  schema.prisma               # Data model
+  migrations/                 # SQL migrations
+  seed.ts, seed-data.json     # Initial settings and categories
 ```
-
-## Prerequisites
-
-- Node.js 18.18+ (Node 20 LTS recommended)
-- npm
-
-## First-time setup
-
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Configure environment variables**
-
-   Create a `.env` file in the project root (if it doesn't already exist):
-
-   ```env
-   DATABASE_URL="file:./dev.db"
-   SESSION_SECRET="<a long random string>"
-   ```
-
-   Generate a secret with:
-
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
-
-3. **Create the database and run migrations**
-
-   ```bash
-   npx prisma migrate dev
-   ```
-
-   This creates `prisma/dev.db` (SQLite) and applies the schema.
-
-4. **Seed default data**
-
-   ```bash
-   npm run db:seed
-   ```
-
-   This creates:
-   - A default `Settings` row (blog title, tagline, theme colors, etc. — all editable later)
-   - Default categories (Personal, Insights, Thoughts, Technology, Travel, Books, Projects)
-   - A default admin user: **username `admin`, password `admin123`**
-
-   > ⚠️ Log in and change this password immediately via **Admin → Settings → Security**.
-
-## Running the app
-
-### Development
-
-```bash
-npm run dev
-```
-
-Visit:
-- **Public site**: http://localhost:3000
-- **Admin panel**: http://localhost:3000/admin/login
-
-### Production build
-
-```bash
-npm run build
-npm run start
-```
-
-### Other scripts
-
-```bash
-npm run lint      # Run ESLint
-npm run db:seed   # Re-run the seed script (safe to re-run; uses upserts)
-```
-
-To inspect/edit the database directly:
-
-```bash
-npx prisma studio
-```
-
-## CI/CD and GitHub Pages
-
-Two GitHub Actions workflows live in `.github/workflows/`:
-
-- **`ci.yml`** — runs on pull requests and pushes to non-`main` branches: installs
-  dependencies, checks migrations apply, lints, type-checks, and runs both a normal
-  `next build` and the static-export build that gets deployed.
-- **`deploy-pages.yml`** — runs on every push to `main` (or manually via
-  *Run workflow*): builds a static export and deploys it to GitHub Pages.
-
-### One-time setup
-
-In the GitHub repo go to **Settings → Pages → Build and deployment** and set
-**Source** to **GitHub Actions**. The site is then published at
-`https://<user>.github.io/<repo>/`.
-
-### How it works (and its limits)
-
-GitHub Pages only serves static files — there is no Node server or database. So the
-deployed site is a **read-only snapshot** of the public blog:
-
-- `scripts/prepare-static-export.mjs` (CI only) removes the admin panel, API routes and
-  auth proxy, and pre-renders every published post and custom page.
-- Content comes from the committed SQLite database, `prisma/dev.db`.
-- The `/admin` panel does **not** exist on GitHub Pages.
-
-Publishing workflow: run the app locally (`npm run dev`), write/edit posts in the admin
-panel, then commit `prisma/dev.db` and push to `main` — the site redeploys automatically.
-
-> Note: the committed `dev.db` also contains the admin password hash. That's fine for a
-> local-only admin, but make sure you've changed the default password.
-
-To try the static build locally (on a throwaway copy — the prep script deletes files):
-
-```bash
-FORCE_STATIC_PREP=true node scripts/prepare-static-export.mjs
-STATIC_EXPORT=true npm run build   # output in out/
-```
-
-## Using the admin panel
-
-- **Dashboard** (`/admin`) — overview stats, all posts (filter by status), edit/view/delete.
-- **New Post / Editor** (`/admin/posts/new`, `/admin/posts/[id]`) — rich-text editor, cover
-  image (upload or URL), category, excerpt, author, draft/publish toggle, delete.
-- **Settings** (`/admin/settings`) — blog title & tagline, accent/primary colors, author
-  profile & avatar, categories (add/remove), social links, About page content, and
-  password change.
-
-Only **published** posts are shown on the public site; drafts are visible only in the
-admin dashboard.
 
 ## Notes
 
-- `legacy/` contains the original static prototype and is kept for reference only —
-  it is not part of the running application.
-- Images (cover photos, avatars) are stored as data URLs directly in the database;
-  there is no separate file upload/storage step.
+- Images (covers, avatars, inline images) are stored as data URLs in the database. Each
+  save must stay under Vercel's 4.5 MB request limit, which is why photos are
+  downscaled before upload. For image-heavy posts, use image URLs.
+- Post and page HTML comes from the admin editor and is rendered as-is. Only trusted
+  people should have admin access.

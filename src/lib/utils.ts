@@ -22,3 +22,42 @@ export function categoryBadgeClass(categoryName: string | null | undefined, cate
   if (idx === -1) return "badge--gray";
   return BADGE_COLORS[idx % BADGE_COLORS.length];
 }
+
+export function stripHtml(html: string): string {
+  return html
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function wordCount(html: string): number {
+  const text = stripHtml(html);
+  return text ? text.split(" ").length : 0;
+}
+
+/** Estimated reading time in minutes (~225 wpm), never less than 1. */
+export function readingTime(html: string): number {
+  return Math.max(1, Math.round(wordCount(html) / 225));
+}
+
+/** Excerpt to use in listings/meta: the explicit excerpt, or the start of the content. */
+export function summarize(excerpt: string, html: string, max = 160): string {
+  const text = excerpt.trim() || stripHtml(html);
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
+export function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}

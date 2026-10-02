@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { HomeContent } from "@/components/home-content";
@@ -6,17 +7,13 @@ import { HomeContent } from "@/components/home-content";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const settings = await prisma.settings.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { id: 1 },
-  });
+  const settings = await getSettings();
 
   const [posts, categories] = await Promise.all([
     prisma.post.findMany({
       where: { status: "published" },
       include: { category: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     }),
     prisma.category.findMany({ orderBy: { order: "asc" } }),
   ]);

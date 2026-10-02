@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (!title) return NextResponse.json({ error: "Title is required." }, { status: 400 });
 
   const status = body.status === "published" ? "published" : "draft";
-  const baseSlug = slugify(title) || "post";
+  const baseSlug = slugify(typeof body.slug === "string" && body.slug.trim() ? body.slug : title) || "post";
   let slug = baseSlug;
   let n = 1;
   while (await prisma.post.findUnique({ where: { slug } })) {

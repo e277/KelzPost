@@ -173,8 +173,8 @@ export function SettingsForm({ settings, categories }: { settings: Settings; cat
       setPasswordError("Please fill in all password fields.");
       return;
     }
-    if (newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters.");
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -424,7 +424,7 @@ export function SettingsForm({ settings, categories }: { settings: Settings; cat
         </div>
 
         {/* Security */}
-        <div className="editor-card">
+        <div className="editor-card" id="security">
           <div className="editor-card__header">Security</div>
           <div className="editor-card__body">
             <div className="form-group">

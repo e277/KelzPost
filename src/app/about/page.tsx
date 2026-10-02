@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+  const settings = await getSettings();
   return { title: `${settings.aboutTitle || "About"} — ${settings.blogTitle}` };
 }
 
 export default async function AboutPage() {
-  const settings = await prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+  const settings = await getSettings();
 
   return (
     <>

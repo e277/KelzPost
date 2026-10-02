@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Settings } from "@prisma/client";
+import { NavLinks } from "./nav-links";
 
 type NavLink = { label: string; href: string };
 
@@ -28,13 +29,7 @@ export function SiteHeader({ settings }: { settings: Settings }) {
             <span>{last}</span>
           </div>
         </Link>
-        <div className="blog-nav__links">
-          {navLinks.map((link) => (
-            <Link key={link.href + link.label} href={link.href}>
-              {link.label}
-            </Link>
-          ))}
-        </div>
+        <NavLinks links={navLinks} />
       </nav>
     </header>
   );

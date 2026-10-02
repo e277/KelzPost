@@ -11,8 +11,11 @@ export async function POST(req: NextRequest) {
   if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
     return NextResponse.json({ error: "Missing fields." }, { status: 400 });
   }
-  if (newPassword.length < 6) {
-    return NextResponse.json({ error: "New password must be at least 6 characters." }, { status: 400 });
+  if (newPassword.length < 8) {
+    return NextResponse.json({ error: "New password must be at least 8 characters." }, { status: 400 });
+  }
+  if (newPassword === currentPassword) {
+    return NextResponse.json({ error: "New password must be different from the current one." }, { status: 400 });
   }
 
   const user = await prisma.adminUser.findUnique({ where: { username: session.username } });
