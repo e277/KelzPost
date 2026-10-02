@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { asc, eq } from "drizzle-orm";
+import { db, pages } from "@/db";
 import { getSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 
 export async function GET() {
-  const pages = await prisma.page.findMany({ orderBy: { createdAt: "asc" } });
-  return NextResponse.json(pages);
+  const rows = await db.select().from(pages).orderBy(asc(pages.createdAt));
+  return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
@@ -18,12 +19,10 @@ export async function POST(req: NextRequest) {
   const baseSlug = slugify(title.trim());
   let slug = baseSlug;
   let attempt = 1;
-  while (await prisma.page.findUnique({ where: { slug } })) {
+  while (await db.query.pages.findFirst({ where: eq(pages.slug, slug) })) {
     slug = `${baseSlug}-${attempt++}`;
   }
 
-  const page = await prisma.page.create({
-    data: { title: title.trim(), slug, content: content || "" },
-  });
+  const [page] = await db.insert(pages).values({ title: title.trim(), slug, content: content || "" }).returning();
   return NextResponse.json(page, { status: 201 });
 }

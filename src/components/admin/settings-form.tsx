@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Category, Settings } from "@prisma/client";
+import type { Category, Settings } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { ImageUpload } from "./image-upload";
 

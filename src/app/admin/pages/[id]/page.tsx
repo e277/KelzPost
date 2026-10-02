@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { PageEditor } from "@/components/admin/page-editor";
@@ -10,7 +10,7 @@ export default async function EditPagePage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const [settings, page] = await Promise.all([
     getSettings(),
-    prisma.page.findUnique({ where: { id } }),
+    db.query.pages.findFirst({ where: (p, { eq }) => eq(p.id, id) }),
   ]);
 
   if (!page) notFound();

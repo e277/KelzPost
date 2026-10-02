@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, pages } from "@/db";
 import { getSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const page = await prisma.page.findUnique({ where: { id } });
+  const page = await db.query.pages.findFirst({ where: eq(pages.id, id) });
   if (!page) return NextResponse.json({ error: "Not found." }, { status: 404 });
   return NextResponse.json(page);
 }
@@ -19,15 +20,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
 
   const desiredSlug = rawSlug?.trim() ? slugify(rawSlug.trim()) : slugify(title.trim());
-  const existing = await prisma.page.findUnique({ where: { slug: desiredSlug } });
+  const existing = await db.query.pages.findFirst({ where: eq(pages.slug, desiredSlug) });
   if (existing && existing.id !== id) {
     return NextResponse.json({ error: "That slug is already in use." }, { status: 409 });
   }
 
-  const page = await prisma.page.update({
-    where: { id },
-    data: { title: title.trim(), slug: desiredSlug, content: content || "" },
-  });
+  const [page] = await db
+    .update(pages)
+    .set({ title: title.trim(), slug: desiredSlug, content: content || "" })
+    .where(eq(pages.id, id))
+    .returning();
+  if (!page) return NextResponse.json({ error: "Not found." }, { status: 404 });
   return NextResponse.json(page);
 }
 
@@ -36,6 +39,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.page.delete({ where: { id } });
+  await db.delete(pages).where(eq(pages.id, id));
   return NextResponse.json({ ok: true });
 }

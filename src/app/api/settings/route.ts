@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db, settings as settingsTable } from "@/db";
 import { getSettings } from "@/lib/site";
 import { DEFAULT_SETTINGS } from "@/lib/defaults";
 import { getSession } from "@/lib/auth";
@@ -36,16 +36,17 @@ export async function PUT(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const data: Record<string, string> = {};
+  const data: Partial<Record<(typeof FIELDS)[number], string>> = {};
   for (const field of FIELDS) {
     if (typeof body[field] === "string") data[field] = body[field];
   }
+  if (Object.keys(data).length === 0) return NextResponse.json(await getSettings());
 
-  const settings = await prisma.settings.upsert({
-    where: { id: 1 },
-    update: data,
-    create: { id: 1, ...DEFAULT_SETTINGS, ...data },
-  });
+  const [settings] = await db
+    .insert(settingsTable)
+    .values({ id: 1, ...DEFAULT_SETTINGS, ...data })
+    .onConflictDoUpdate({ target: settingsTable.id, set: data })
+    .returning();
 
   return NextResponse.json(settings);
 }

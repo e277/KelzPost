@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { db, adminUsers } from "@/db";
 import { getSettings } from "@/lib/site";
 import { getSession } from "@/lib/auth";
 import { LoginForm } from "@/components/admin/login-form";
@@ -16,7 +16,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
 
   const [settings, adminCount] = await Promise.all([
     getSettings(),
-    prisma.adminUser.count(),
+    db.$count(adminUsers),
   ]);
   const needsSetup = adminCount === 0;
 

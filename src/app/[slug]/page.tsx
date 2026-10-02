@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const [settings, page] = await Promise.all([
     getSettings(),
-    prisma.page.findUnique({ where: { slug } }),
+    db.query.pages.findFirst({ where: (p, { eq }) => eq(p.slug, slug) }),
   ]);
   if (!page) return { title: `Not Found — ${settings.blogTitle}` };
   return { title: `${page.title} — ${settings.blogTitle}` };
@@ -21,7 +21,7 @@ export default async function CustomPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const [settings, page] = await Promise.all([
     getSettings(),
-    prisma.page.findUnique({ where: { slug } }),
+    db.query.pages.findFirst({ where: (p, { eq }) => eq(p.slug, slug) }),
   ]);
 
   if (!page) notFound();

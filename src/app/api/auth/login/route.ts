@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, adminUsers } from "@/db";
 import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 import { clientIp, rateLimit, resetRateLimit } from "@/lib/rate-limit";
 
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Username and password are required." }, { status: 400 });
   }
 
-  const user = await prisma.adminUser.findUnique({ where: { username } });
+  const user = await db.query.adminUsers.findFirst({ where: eq(adminUsers.username, username) });
   const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !valid) {
     return NextResponse.json({ error: "Incorrect username or password." }, { status: 401 });

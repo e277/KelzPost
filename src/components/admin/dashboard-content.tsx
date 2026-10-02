@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import type { Category, Post } from "@prisma/client";
+import type { Category, Post } from "@/db/schema";
 import { formatDate, wordCount } from "@/lib/utils";
 import { useToast } from "@/components/toast";
 

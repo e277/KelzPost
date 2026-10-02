@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Category, Post } from "@prisma/client";
+import type { Category, Post } from "@/db/schema";
 import { formatDate, categoryBadgeClass, readingTime, summarize } from "@/lib/utils";
 
 type PostWithCategory = Post & { category: Category | null };

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Settings } from "@prisma/client";
+import type { Settings } from "@/db/schema";
 import { NavLinks } from "./nav-links";
 
 type NavLink = { label: string; href: string };

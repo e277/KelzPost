@@ -1,24 +1,33 @@
-import { prisma } from "@/lib/prisma";
+import { eq, lt, sql } from "drizzle-orm";
+import { db, loginAttempts } from "@/db";
 
 // Fixed-window rate limiter backed by the LoginAttempt table, so limits are
 // shared by every serverless instance.
 
 export async function rateLimit(key: string, limit: number, windowMs: number) {
   const now = new Date();
-  const existing = await prisma.loginAttempt.findUnique({ where: { key } });
+  const resetAt = new Date(now.getTime() + windowMs);
 
-  const attempt =
-    !existing || existing.resetAt <= now
-      ? await prisma.loginAttempt.upsert({
-          where: { key },
-          create: { key, count: 1, resetAt: new Date(now.getTime() + windowMs) },
-          update: { count: 1, resetAt: new Date(now.getTime() + windowMs) },
-        })
-      : await prisma.loginAttempt.update({ where: { key }, data: { count: { increment: 1 } } });
+  // Dates inside raw sql fragments must be passed as strings (and cast) for the postgres driver.
+  const nowSql = sql`${now.toISOString()}::timestamp(3)`;
+  const resetAtSql = sql`${resetAt.toISOString()}::timestamp(3)`;
+
+  // One atomic statement: start a new window if there is none or it expired, otherwise count up.
+  const [attempt] = await db
+    .insert(loginAttempts)
+    .values({ key, count: 1, resetAt })
+    .onConflictDoUpdate({
+      target: loginAttempts.key,
+      set: {
+        count: sql`CASE WHEN ${loginAttempts.resetAt} <= ${nowSql} THEN 1 ELSE ${loginAttempts.count} + 1 END`,
+        resetAt: sql`CASE WHEN ${loginAttempts.resetAt} <= ${nowSql} THEN ${resetAtSql} ELSE ${loginAttempts.resetAt} END`,
+      },
+    })
+    .returning();
 
   // Opportunistically clear out stale rows.
   if (Math.random() < 0.05) {
-    await prisma.loginAttempt.deleteMany({ where: { resetAt: { lt: now } } }).catch(() => null);
+    await db.delete(loginAttempts).where(lt(loginAttempts.resetAt, now)).catch(() => null);
   }
 
   return {
@@ -28,7 +37,7 @@ export async function rateLimit(key: string, limit: number, windowMs: number) {
 }
 
 export async function resetRateLimit(key: string) {
-  await prisma.loginAttempt.delete({ where: { key } }).catch(() => null);
+  await db.delete(loginAttempts).where(eq(loginAttempts.key, key)).catch(() => null);
 }
 
 export function clientIp(headers: Headers): string {

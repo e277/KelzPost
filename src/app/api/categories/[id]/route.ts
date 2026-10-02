@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, categories } from "@/db";
 import { getSession } from "@/lib/auth";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +14,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (typeof name === "string" && name.trim()) data.name = name.trim();
   if (typeof order === "number") data.order = order;
 
-  const category = await prisma.category.update({ where: { id }, data });
+  const [category] = Object.keys(data).length
+    ? await db.update(categories).set(data).where(eq(categories.id, id)).returning()
+    : await db.select().from(categories).where(eq(categories.id, id));
+  if (!category) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(category);
 }
 
@@ -22,9 +26,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  // Detach posts referencing this category before deleting
-  await prisma.post.updateMany({ where: { categoryId: id }, data: { categoryId: null } });
-  await prisma.category.delete({ where: { id } }).catch(() => null);
+  // Posts in this category are detached by the foreign key (ON DELETE SET NULL).
+  await db.delete(categories).where(eq(categories.id, id));
 
   return NextResponse.json({ ok: true });
 }

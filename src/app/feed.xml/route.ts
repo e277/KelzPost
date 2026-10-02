@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
 import { getSettings, absoluteUrl, SITE_URL } from "@/lib/site";
 import { escapeXml, summarize } from "@/lib/utils";
 
@@ -7,11 +7,11 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const [settings, posts] = await Promise.all([
     getSettings(),
-    prisma.post.findMany({
-      where: { status: "published" },
-      include: { category: true },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: 30,
+    db.query.posts.findMany({
+      where: (p, { eq }) => eq(p.status, "published"),
+      with: { category: true },
+      orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
+      limit: 30,
     }),
   ]);
 

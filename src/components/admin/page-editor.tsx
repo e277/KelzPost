@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Page } from "@prisma/client";
+import type { Page } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { slugify } from "@/lib/utils";
 

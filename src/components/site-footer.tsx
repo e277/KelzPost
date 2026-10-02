@@ -1,4 +1,4 @@
-import type { Settings } from "@prisma/client";
+import type { Settings } from "@/db/schema";
 
 const SOCIAL_ICONS: Record<string, string> = {
   twitter:

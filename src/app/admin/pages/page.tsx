@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { formatDate } from "@/lib/utils";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPagesPage() {
   const [settings, pages] = await Promise.all([
     getSettings(),
-    prisma.page.findMany({ orderBy: { createdAt: "asc" } }),
+    db.query.pages.findMany({ orderBy: (p, { asc }) => asc(p.createdAt) }),
   ]);
 
   return (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { db, categories } from "@/db";
 import { getSession } from "@/lib/auth";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -9,14 +9,14 @@ import { DashboardContent } from "@/components/admin/dashboard-content";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const [settings, session, posts, categories] = await Promise.all([
+  const [settings, session, posts, categoryCount] = await Promise.all([
     getSettings(),
     getSession(),
-    prisma.post.findMany({ include: { category: true }, orderBy: { updatedAt: "desc" } }),
-    prisma.category.count(),
+    db.query.posts.findMany({ with: { category: true }, orderBy: (p, { desc }) => desc(p.updatedAt) }),
+    db.$count(categories),
   ]);
 
-  const user = session ? await prisma.adminUser.findUnique({ where: { username: session.username } }) : null;
+  const user = session ? await db.query.adminUsers.findFirst({ where: (u, { eq }) => eq(u.username, session.username) }) : null;
   const usingDefaultPassword = user ? await bcrypt.compare("admin123", user.passwordHash) : false;
 
   return (
@@ -36,7 +36,7 @@ export default async function AdminDashboardPage() {
           <Link href="/admin/settings#security">Change it now →</Link>
         </div>
       )}
-      <DashboardContent posts={posts} categoryCount={categories} username={session?.username || "admin"} />
+      <DashboardContent posts={posts} categoryCount={categoryCount} username={session?.username || "admin"} />
     </AdminShell>
   );
 }

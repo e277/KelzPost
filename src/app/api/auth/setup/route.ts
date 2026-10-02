@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { count, sql } from "drizzle-orm";
+import { db, adminUsers, categories, settings } from "@/db";
 import { createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS } from "@/lib/defaults";
 
@@ -21,12 +22,17 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const created = await prisma.$transaction(async (tx) => {
-    if ((await tx.adminUser.count()) > 0) return null;
-    const user = await tx.adminUser.create({ data: { username, passwordHash } });
-    await tx.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1, ...DEFAULT_SETTINGS } });
-    if ((await tx.category.count()) === 0) {
-      await tx.category.createMany({ data: DEFAULT_CATEGORIES.map((name, order) => ({ name, order })) });
+  const created = await db.transaction(async (tx) => {
+    // Serialize concurrent setup attempts so only one admin can ever be created here.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('admin-setup'))`);
+    const [{ admins }] = await tx.select({ admins: count() }).from(adminUsers);
+    if (admins > 0) return null;
+
+    const [user] = await tx.insert(adminUsers).values({ username, passwordHash }).returning();
+    await tx.insert(settings).values({ id: 1, ...DEFAULT_SETTINGS }).onConflictDoNothing();
+    const [{ cats }] = await tx.select({ cats: count() }).from(categories);
+    if (cats === 0 && DEFAULT_CATEGORIES.length > 0) {
+      await tx.insert(categories).values(DEFAULT_CATEGORIES.map((name, order) => ({ name, order })));
     }
     return user;
   });

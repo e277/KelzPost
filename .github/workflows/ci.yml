@@ -40,15 +40,17 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci # also runs `prisma generate`
+      - run: npm ci
       - name: Check schema and migrations are in sync
-        # Uses a separate scratch database: the shadow DB is left with the migrated schema.
-        env:
-          SHADOW_DATABASE_URL: postgresql://blog:blog@localhost:5432/blog_shadow
         run: |
-          PGPASSWORD=blog psql -h localhost -U blog -d blog -c 'CREATE DATABASE blog_shadow'
-          npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
-      - run: npx prisma migrate deploy
+          npx drizzle-kit check
+          npx drizzle-kit generate
+          if ! git diff --quiet -- drizzle || [ -n "$(git ls-files --others --exclude-standard drizzle)" ]; then
+            echo "::error::src/db/schema.ts has changes without a migration. Run 'npm run db:generate' and commit the result."
+            git status --short drizzle
+            exit 1
+          fi
+      - run: npm run db:migrate
       - run: npm run db:seed
       - run: npm run lint
       - run: npm run typecheck

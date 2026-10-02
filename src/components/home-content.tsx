@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Category, Post, Settings } from "@prisma/client";
+import type { Category, Post, Settings } from "@/db/schema";
 import { stripHtml } from "@/lib/utils";
 import { PostCard } from "./post-card";
 

@@ -1,4 +1,4 @@
-import type { Category, Post } from "@prisma/client";
+import type { Category, Post } from "@/db/schema";
 import { formatDate, categoryBadgeClass, readingTime } from "@/lib/utils";
 
 type PostWithCategory = Post & { category: Category | null };

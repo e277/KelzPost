@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { summarize, readingTime } from "@/lib/utils";
 import { SiteHeader } from "@/components/site-header";
@@ -12,7 +12,7 @@ import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
 
 async function getPublishedPost(slug: string) {
-  const post = await prisma.post.findUnique({ where: { slug }, include: { category: true } });
+  const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
   return post?.status === "published" ? post : null;
 }
 
@@ -55,17 +55,17 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const [settings, categories, post] = await Promise.all([
     getSettings(),
-    prisma.category.findMany({ orderBy: { order: "asc" } }),
+    db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),
     getPublishedPost(slug),
   ]);
 
   if (!post) notFound();
 
   // Chronological neighbours and up to 3 related posts (same category first, then most recent).
-  const published = await prisma.post.findMany({
-    where: { status: "published" },
-    include: { category: true },
-    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+  const published = await db.query.posts.findMany({
+    where: (p, { eq }) => eq(p.status, "published"),
+    with: { category: true },
+    orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
   });
   const index = published.findIndex((p) => p.id === post.id);
   const newer = index > 0 ? published[index - 1] : null;
