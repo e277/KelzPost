@@ -8,11 +8,12 @@ import { apiSend } from "@/lib/admin-api";
 import { AdminCard, Field, LabelNote } from "./ui";
 
 /**
- * How the blog looks: name, colors, homepage hero and layout, social links and footer.
+ * Configurations: how the public site looks (name, colors, homepage hero and layout,
+ * social links and footer).
  * Content lives elsewhere: pages and the header menu under Pages, categories and tags
  * under Categories, and each person's name and password under Your Profile.
  */
-export function SettingsForm({ settings }: { settings: Settings }) {
+export function ConfigurationsForm({ settings }: { settings: Settings }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
 
@@ -57,11 +58,11 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         postsLayout,
         footerText: footerText.trim(),
       },
-      "Failed to save settings."
+      "Failed to save configurations."
     );
     setSaving(false);
     if (!res.ok) return showToast(res.error, "error");
-    showToast("Settings saved.");
+    showToast("Configurations saved.");
     router.refresh();
   };
 

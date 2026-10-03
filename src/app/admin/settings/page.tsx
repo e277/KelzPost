@@ -1,17 +1,6 @@
-import { getSettings } from "@/lib/site";
-import { AdminShell } from "@/components/admin/admin-shell";
-import { SettingsForm } from "@/components/admin/settings-form";
-import { requirePageUser } from "@/lib/current-user";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminSettingsPage() {
-  await requirePageUser("admin");
-  const settings = await getSettings();
-
-  return (
-    <AdminShell active="settings" title="Settings">
-      <SettingsForm settings={settings} />
-    </AdminShell>
-  );
+// Settings was renamed Configurations; keep old bookmarks working.
+export default function OldSettingsPage() {
+  redirect("/admin/configurations");
 }

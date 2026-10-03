@@ -21,7 +21,7 @@ export type TeamRow = {
 };
 
 const ROLE_HELP = {
-  admin: "Can do everything: settings, pages, comments, newsletter and the team.",
+  admin: "Can do everything: pages, categories, comments, newsletter, configurations and the team.",
   author: "Can write, publish and edit their own posts only.",
 };
 
