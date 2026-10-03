@@ -146,21 +146,27 @@ export function parsePage(value: string | string[] | undefined): number {
   return Number.isInteger(n) && n > 0 ? n : 1;
 }
 
-/** Who a post is shown as written by, and their author page if they have one. */
-export type Byline = { name: string; href: string | null };
+/** Who a post is shown as written by, their photo (empty for none) and their author page if they have one. */
+export type Byline = { name: string; href: string | null; avatar: string };
 
-type BylineUser = Pick<AdminUser, "displayName" | "slug"> | null | undefined;
+type BylineUser = (Pick<AdminUser, "displayName" | "slug"> & { avatar?: string }) | null | undefined;
+
+/** The blog's own author from Pages → About, or just their name. */
+export type DefaultAuthor = string | Pick<Settings, "authorName" | "authorAvatar">;
 
 /**
  * A guest author typed on the post wins; then the team member who wrote it,
  * if they've set a display name; then the blog's author from Pages → About.
  */
-export function postByline(post: { author: string; authorUser?: BylineUser }, defaultName: string): Byline {
+export function postByline(post: { author: string; authorUser?: BylineUser }, defaultAuthor: DefaultAuthor): Byline {
   const guest = post.author.trim();
-  if (guest) return { name: guest, href: null };
+  if (guest) return { name: guest, href: null, avatar: "" };
   const user = post.authorUser;
-  if (user?.displayName.trim()) return { name: user.displayName.trim(), href: user.slug ? `/author/${user.slug}` : null };
-  return { name: defaultName, href: null };
+  if (user?.displayName.trim()) {
+    return { name: user.displayName.trim(), href: user.slug ? `/author/${user.slug}` : null, avatar: user.avatar ?? "" };
+  }
+  if (typeof defaultAuthor === "string") return { name: defaultAuthor, href: null, avatar: "" };
+  return { name: defaultAuthor.authorName, href: null, avatar: defaultAuthor.authorAvatar };
 }
 
 /** The author card under a post: name, bio, photo and where to read more about them. */
@@ -186,7 +192,7 @@ export const postPageRelations = {
 /** Relations to load for post cards (pass as `with` to db.query.posts). */
 export const cardRelations = {
   category: true,
-  authorUser: { columns: { displayName: true, slug: true } },
+  authorUser: { columns: { displayName: true, slug: true, avatar: true } },
 } as const;
 
 /** What a post card needs, without the post body. */
@@ -205,7 +211,7 @@ export type PostSummary = {
 
 export function toPostSummary(
   post: Post & { category: Category | null; authorUser?: BylineUser },
-  defaultAuthor: string
+  defaultAuthor: DefaultAuthor
 ): PostSummary {
   return {
     id: post.id,

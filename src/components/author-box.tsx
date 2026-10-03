@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthorAvatar } from "@/components/author-avatar";
 import type { AuthorProfile } from "@/lib/posts";
 
 /** "About the author" card shown at the end of a post. */
@@ -6,13 +7,7 @@ export function AuthorBox({ author, label = "Written by" }: { author: AuthorProf
   const firstName = author.name.split(" ")[0];
   return (
     <aside className="author-box" aria-label="About the author">
-      {author.avatar ? (
-        <img src={author.avatar} alt="" className="author-box__avatar" />
-      ) : (
-        <div className="author-box__avatar author-box__avatar--placeholder" aria-hidden="true">
-          {(author.name || "A")[0]?.toUpperCase()}
-        </div>
-      )}
+      <AuthorAvatar name={author.name} src={author.avatar} className="author-box__avatar" />
       <div>
         <p className="author-box__label">{label}</p>
         <p className="author-box__name">{author.name}</p>

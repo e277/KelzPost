@@ -24,8 +24,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function SearchPage({ searchParams }: Props) {
   const [settings, { q }] = await Promise.all([getSettings(), searchParams]);
   const query = readQuery(q);
-  const results = query ? await searchPosts(query, settings.authorName) : [];
-  const text = getSiteText(settings);
+  const results = query ? await searchPosts(query, settings) : [];
 
   return (
     <>

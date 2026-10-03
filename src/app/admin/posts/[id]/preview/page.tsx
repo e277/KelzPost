@@ -42,7 +42,7 @@ export default async function PreviewPostPage({ params }: { params: Promise<{ id
       <SiteHeader settings={settings} />
       <main>
         <div className="post-wrapper">
-          <PostArticle post={post} categories={categories} byline={postByline(post, settings.authorName)} tags={tags} bodyHtml={html} toc={toc} />
+          <PostArticle post={post} categories={categories} byline={postByline(post, settings)} tags={tags} bodyHtml={html} toc={toc} />
         </div>
       </main>
       <SiteFooter settings={settings} />

@@ -56,7 +56,7 @@ export default async function TagPage({ params, searchParams }: Props) {
       kind="Tag"
       name={tag.name}
       basePath={`/tag/${slug}`}
-      posts={rows.map((p) => toPostSummary(p, settings.authorName))}
+      posts={rows.map((p) => toPostSummary(p, settings))}
       total={total}
       page={page}
       pageCount={pageCount}

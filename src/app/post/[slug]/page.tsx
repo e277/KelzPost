@@ -162,7 +162,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   const [tags, comments, postCategories] = await Promise.all([getPostTags(post.id), getComments(post.id), getPostCategories(post)]);
   const { html, toc } = renderPostBody(post.content);
-  const byline = postByline(post, settings.authorName);
+  const byline = postByline(post, settings);
   const author = postAuthorProfile(post, settings);
   const text = getSiteText(settings);
 
@@ -240,7 +240,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             <h2 className="related__title">{text.keepReading}</h2>
             <div className="posts-grid related__grid">
               {related.map((p) => (
-                <PostCard key={p.id} post={toPostSummary(p, settings.authorName)} categories={categories} readMore={text.readMore} />
+                <PostCard key={p.id} post={toPostSummary(p, settings)} categories={categories} />
               ))}
             </div>
           </section>

@@ -63,7 +63,8 @@ export default async function HomePage({ searchParams }: Props) {
       .groupBy(postCategories.categoryId),
     db.$count(posts, livePosts()),
   ]);
-  if (slug && !category) notFound();
+  // Cards only need a summary; post bodies stay on the server.
+  const posts = rows.map((p) => toPostSummary(p, settings));
 
   const text = getSiteText(settings);
   const banner = pageBanner(home, { heading: settings.blogTitle, subheading: settings.tagline });
