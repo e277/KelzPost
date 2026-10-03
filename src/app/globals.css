@@ -818,8 +818,23 @@ body > main { margin-bottom: 0; }
   font-size: .85rem; line-height: 1; transition: var(--transition);
 }
 .tag-chip button:hover { background: var(--red); color: var(--white); }
-.tag-add-row { display: flex; gap: 8px; }
-.tag-add-row input { flex: 1; }
+.tag-add-row { display: flex; gap: 8px; align-items: stretch; }
+.tag-add-row input { flex: 1; min-width: 0; }
+/* Inline "add" rows use the same input look as .form-group fields. */
+.nav-link-add-row input, .tag-add-row input {
+  padding: 11px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body); font-size: .92rem; color: var(--gray-800);
+  background: var(--white);
+  transition: var(--transition);
+}
+.nav-link-add-row input::placeholder, .tag-add-row input::placeholder { color: var(--gray-400); }
+.nav-link-add-row input:focus, .tag-add-row input:focus {
+  outline: none; border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(200,146,42,.12);
+}
+.nav-link-add-row .btn, .tag-add-row .btn { padding-left: 20px; padding-right: 20px; }
 .settings-section-note { font-size: .8rem; color: var(--gray-400); margin-top: -4px; margin-bottom: 14px; }
 
 /* ── HERO SPLIT VARIANT ── */
@@ -861,10 +876,10 @@ body > main { margin-bottom: 0; }
   font-size: .85rem;
 }
 .nav-link-row__label { font-weight: 600; color: var(--navy); min-width: 80px; }
-.nav-link-row__href { flex: 1; color: var(--gray-500); font-family: monospace; font-size: .8rem; }
+.nav-link-row__href { flex: 1; color: var(--gray-600); font-family: monospace; font-size: .8rem; overflow-wrap: anywhere; }
 .nav-link-row__actions { display: flex; gap: 4px; }
-.nav-link-add-row { display: flex; gap: 8px; align-items: center; }
-.nav-link-add-row input { flex: 1; }
+.nav-link-add-row { display: flex; gap: 8px; align-items: stretch; }
+.nav-link-add-row input { flex: 1; min-width: 0; }
 
 /* ── LAYOUT PICKER ── */
 .layout-options { display: flex; gap: 10px; margin-top: 8px; }
@@ -1069,6 +1084,7 @@ button.dash-stat:hover { box-shadow: var(--shadow-md); transform: translateY(-1p
   .post-card--list { flex-direction: column; }
   .post-card--list .post-card__image { width: 100%; min-width: unset; min-height: 200px; }
   .nav-link-add-row { flex-wrap: wrap; }
+  .nav-link-add-row input { flex-basis: 100%; }
   .layout-options { flex-wrap: wrap; }
 }
 
