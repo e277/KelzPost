@@ -28,6 +28,7 @@ managed from the built-in admin panel. No content is hardcoded.
 - Dashboard: stats, search, filter and sort, one-click publish/unpublish, draft previews
 - Editor: rich text (headings, lists, quotes, links, images, code blocks, dividers),
   editable URL slug, word count, unsaved-changes warning, Ctrl/⌘+S to save
+- Images are resized and compressed in the browser, then stored on Vercel Blob
 - Images are resized and compressed in the browser before upload
 - Newsletter: see subscribers, email a published post to them in one click, remove
   readers, export the list as CSV
@@ -68,6 +69,11 @@ managed from the built-in admin panel. No content is hardcoded.
    environment variables on the next deployment, so **redeploy after changing them**
    (Deployments → ⋯ on the latest one → **Redeploy**).
 5. **Visit `/admin/login`** and create your admin account.
+6. **Add image storage (recommended).** In the project, open **Storage → Create Database →
+   Blob**, and connect it to the project. This sets `BLOB_READ_WRITE_TOKEN`. Then redeploy.
+   Uploaded images go to Blob from then on, and the build moves any images already saved
+   in the database over to Blob (`npm run images:move`). Until a Blob store is connected,
+   uploads still work but are saved inside the database, which makes pages heavier.
 
 > Every deployment, previews included, runs migrations against the `DATABASE_URL` it is
 > given. If you don't want previews to touch production data, enable Neon's preview
@@ -171,8 +177,9 @@ drizzle.config.ts             # drizzle-kit configuration
 
 ## Notes
 
-- Images (covers, avatars, inline images) are stored as data URLs in the database. Each
-  save must stay under Vercel's 4.5 MB request limit, which is why photos are
-  downscaled before upload. For image-heavy posts, use image URLs.
+- Images (covers, avatars, inline images) are downscaled in the browser and uploaded to
+  Vercel Blob through `/api/uploads`; only their URLs are saved in the database. Without a
+  Blob store they fall back to data URLs in the database, where each save must stay under
+  Vercel's 4.5 MB request limit.
 - Post and page HTML comes from the admin editor and is rendered as-is. Only trusted
   people should have admin access.
