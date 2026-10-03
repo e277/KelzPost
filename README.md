@@ -16,6 +16,8 @@ managed from the built-in admin panel. No content is hardcoded.
 - RSS feed (`/feed.xml`), `sitemap.xml`, `robots.txt`, Open Graph/Twitter cards and
   `BlogPosting` structured data
 - Responsive layout with a mobile menu, plus a custom 404 page
+- Newsletter signup on the home page and every post, with email confirmation and a
+  one-click unsubscribe link in every email
 
 **For the admin**
 
@@ -27,6 +29,8 @@ managed from the built-in admin panel. No content is hardcoded.
 - Editor: rich text (headings, lists, quotes, links, images, code blocks, dividers),
   editable URL slug, word count, unsaved-changes warning, Ctrl/⌘+S to save
 - Images are resized and compressed in the browser before upload
+- Newsletter: see subscribers, email a published post to them in one click, remove
+  readers, export the list as CSV
 - Settings: branding, colors, navigation, hero, layout, author, categories, social
   links, footer, About content, password change
 - Works on mobile
@@ -35,6 +39,7 @@ managed from the built-in admin panel. No content is hardcoded.
 
 - **Next.js 16** (App Router, TypeScript, `src/` directory)
 - **Drizzle ORM** with **PostgreSQL** via the `postgres` driver (e.g. [Neon](https://neon.tech) via the Vercel Marketplace)
+- **Nodemailer** for newsletter email over SMTP
 - **bcryptjs** for password hashing; signed-cookie sessions (Web Crypto)
 - Plain CSS (`src/app/globals.css`)
 
@@ -52,6 +57,8 @@ managed from the built-in admin panel. No content is hardcoded.
      `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
    - `SITE_URL` (optional): your public URL if you use a custom domain, e.g.
      `https://blog.example.com`. Otherwise the Vercel production domain is used.
+   - Newsletter (optional): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and
+     `SMTP_FROM`. See [Newsletter](#newsletter).
 
    > GitHub's repository **Settings → Environments** and **Secrets** are only for GitHub
    > Actions; the Vercel site never sees them. The "Production"/"Preview" environments
@@ -106,6 +113,35 @@ throwaway Postgres it checks that every schema change has a committed migration,
 applies the migrations, seeds the database, and runs lint, typecheck and a production
 build. Vercel does the
 deploying.
+
+## Newsletter
+
+Subscribers are stored in your own database, and emails go out through any email
+provider that offers SMTP, using [Nodemailer](https://nodemailer.com). Nothing else needs
+to be hosted. The signup form stays hidden until these Vercel environment variables are
+set (then redeploy):
+
+| Variable    | Example                               |
+| ----------- | ------------------------------------- |
+| `SMTP_HOST` | `smtp-relay.brevo.com`                |
+| `SMTP_PORT` | `587` (STARTTLS, default) or `465`    |
+| `SMTP_USER` | your SMTP login                       |
+| `SMTP_PASS` | your SMTP password or app password    |
+| `SMTP_FROM` | `My Blog <newsletter@yourdomain.com>` |
+
+Providers with a free tier include Brevo (300 emails/day), Resend, Mailgun and Amazon
+SES; a Gmail account with an [app password](https://myaccount.google.com/apppasswords)
+(`smtp.gmail.com`, port 465) also works for small lists. Use a `SMTP_FROM` address on a
+domain you have verified with the provider so emails don't land in spam.
+
+How it works:
+
+1. A reader signs up and gets a confirmation email; they're only on the list once they
+   click the link.
+2. After you publish a post, open **Admin → Newsletter** and press **Send** next to it.
+   Each post can be sent once. Every email has an unsubscribe link, and mail apps show
+   their own one-click unsubscribe button.
+3. **Export CSV** downloads the list if you ever move to another email service.
 
 ## Project structure
 

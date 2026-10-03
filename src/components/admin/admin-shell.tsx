@@ -10,7 +10,7 @@ export function AdminShell({
   children,
 }: {
   blogTitle: string;
-  active: "dashboard" | "editor" | "pages" | "settings";
+  active: "dashboard" | "editor" | "pages" | "newsletter" | "settings";
   title: string;
   actions?: ReactNode;
   children: ReactNode;
@@ -47,6 +47,13 @@ export function AdminShell({
               <polyline points="10 9 9 9 8 9" />
             </svg>
             Pages
+          </Link>
+          <Link href="/admin/newsletter" className={active === "newsletter" ? "active" : ""}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <polyline points="22 6 12 13 2 6" />
+            </svg>
+            Newsletter
           </Link>
           <Link href="/admin/settings" className={active === "settings" ? "active" : ""}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">

@@ -90,6 +90,8 @@ export const posts = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     publishedAt: timestamp("publishedAt", { precision: 3, mode: "date" }),
+    // When the post was emailed to newsletter subscribers; null until sent.
+    newsletterSentAt: timestamp("newsletterSentAt", { precision: 3, mode: "date" }),
   },
   (t) => [
     uniqueIndex("Post_slug_key").on(t.slug),
@@ -121,6 +123,27 @@ export const postTags = pgTable(
     index("PostTag_tagId_idx").on(t.tagId),
     foreignKey({ name: "PostTag_postId_fkey", columns: [t.postId], foreignColumns: [posts.id] }).onDelete("cascade"),
     foreignKey({ name: "PostTag_tagId_fkey", columns: [t.tagId], foreignColumns: [tags.id] }).onDelete("cascade"),
+  ]
+);
+
+// Newsletter subscribers. A signup stays "pending" until the address is
+// confirmed from the email link; "unsubscribed" rows are kept so the address
+// isn't emailed again. The token identifies the subscriber in confirm and
+// unsubscribe links.
+export const subscribers = pgTable(
+  "Subscriber",
+  {
+    id: id(),
+    email: text("email").notNull(),
+    status: text("status").notNull().default("pending"),
+    token: text("token").notNull(),
+    createdAt: createdAt(),
+    confirmedAt: timestamp("confirmedAt", { precision: 3, mode: "date" }),
+  },
+  (t) => [
+    uniqueIndex("Subscriber_email_key").on(t.email),
+    uniqueIndex("Subscriber_token_key").on(t.token),
+    index("Subscriber_status_idx").on(t.status),
   ]
 );
 
@@ -156,4 +179,5 @@ export type Page = typeof pages.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
+export type Subscriber = typeof subscribers.$inferSelect;
 export type PostWithCategory = Post & { category: Category | null };
