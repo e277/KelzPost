@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import type { SiteText } from "@/lib/site-text";
 import { COMMENT_LIMITS } from "@/lib/comments";
 
 /** A comment as sent to the browser: never includes the commenter's email. */
@@ -14,7 +15,9 @@ export type PublicComment = {
   replies?: PublicComment[];
 };
 
-function CommentForm({ postId, parentId, onCancel }: { postId: string; parentId?: string; onCancel?: () => void }) {
+type CommentText = Pick<SiteText, "commentsHeading" | "noComments" | "leaveComment" | "commentButton" | "commentsModerated">;
+
+function CommentForm({ postId, parentId, onCancel, text }: { postId: string; parentId?: string; onCancel?: () => void; text: CommentText }) {
   const [startedAt] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -90,14 +93,14 @@ function CommentForm({ postId, parentId, onCancel }: { postId: string; parentId?
       )}
       <div className="comment-form__actions">
         <button type="submit" className="btn btn--primary btn--sm" disabled={busy}>
-          {busy ? "Sending…" : parentId ? "Post reply" : "Post comment"}
+          {busy ? "Sending…" : parentId ? "Post reply" : text.commentButton}
         </button>
         {onCancel && (
           <button type="button" className="btn btn--ghost btn--sm" onClick={onCancel}>
             Cancel
           </button>
         )}
-        <span className="comment-form__note">Comments are reviewed before they appear.</span>
+        <span className="comment-form__note">{text.commentsModerated}</span>
       </div>
     </form>
   );
@@ -126,17 +129,18 @@ function CommentItem({ comment, onReply }: { comment: PublicComment; onReply?: (
   );
 }
 
-export function PostComments({ postId, comments, count }: { postId: string; comments: PublicComment[]; count: number }) {
+export function PostComments({ postId, comments, count, text }: { postId: string; comments: PublicComment[]; count: number; text: CommentText }) {
   const [replyTo, setReplyTo] = useState<string | null>(null);
 
   return (
     <section className="comments" id="comments" aria-labelledby="comments-title">
       <h2 className="comments__title" id="comments-title">
-        {count === 0 ? "Comments" : `${count} Comment${count === 1 ? "" : "s"}`}
+        {text.commentsHeading}
+        {count > 0 && <span className="comments__count"> ({count})</span>}
       </h2>
 
       {comments.length === 0 ? (
-        <p className="comments__empty">No comments yet. Be the first to share your thoughts.</p>
+        <p className="comments__empty">{text.noComments}</p>
       ) : (
         <ol className="comments__list">
           {comments.map((c) => (
@@ -151,7 +155,7 @@ export function PostComments({ postId, comments, count }: { postId: string; comm
                   ))}
                   {replyTo === c.id && (
                     <li>
-                      <CommentForm postId={postId} parentId={c.id} onCancel={() => setReplyTo(null)} />
+                      <CommentForm postId={postId} parentId={c.id} onCancel={() => setReplyTo(null)} text={text} />
                     </li>
                   )}
                 </ol>
@@ -162,8 +166,8 @@ export function PostComments({ postId, comments, count }: { postId: string; comm
       )}
 
       <div className="comments__new">
-        <h3 className="comments__subtitle">Leave a comment</h3>
-        <CommentForm postId={postId} />
+        <h3 className="comments__subtitle">{text.leaveComment}</h3>
+        <CommentForm postId={postId} text={text} />
       </div>
     </section>
   );

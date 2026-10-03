@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import type { SiteText } from "@/lib/site-text";
 
 /** Email signup card for the public site. */
-export function NewsletterSignup({ blogTitle }: { blogTitle: string }) {
+export function NewsletterSignup({ text }: { text: Pick<SiteText, "newsletterHeading" | "newsletterText" | "newsletterButton"> }) {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,9 +32,9 @@ export function NewsletterSignup({ blogTitle }: { blogTitle: string }) {
   return (
     <section className="newsletter" aria-labelledby="newsletter-title">
       <h2 id="newsletter-title" className="newsletter__title">
-        Get new posts by email
+        {text.newsletterHeading}
       </h2>
-      <p className="newsletter__text">Subscribe to {blogTitle} and never miss a post. No spam, unsubscribe anytime.</p>
+      <p className="newsletter__text">{text.newsletterText}</p>
 
       {result?.ok ? (
         <p className="newsletter__result" role="status">
@@ -65,7 +66,7 @@ export function NewsletterSignup({ blogTitle }: { blogTitle: string }) {
             onChange={(e) => setWebsite(e.target.value)}
           />
           <button type="submit" className="btn btn--primary" disabled={busy}>
-            {busy ? "Subscribing…" : "Subscribe"}
+            {busy ? "Subscribing…" : text.newsletterButton}
           </button>
         </form>
       )}

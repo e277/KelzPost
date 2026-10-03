@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { asc, eq, max } from "drizzle-orm";
+import { asc, max } from "drizzle-orm";
 import { db, categories } from "@/db";
 import { requireUser } from "@/lib/current-user";
 import { refreshPublicPages } from "@/lib/revalidate";
+import { slugify } from "@/lib/utils";
 
 export async function GET() {
   const rows = await db.select().from(categories).orderBy(asc(categories.order));
@@ -17,8 +18,10 @@ export async function POST(req: NextRequest) {
   const trimmed = (name || "").trim();
   if (!trimmed) return NextResponse.json({ error: "Name is required." }, { status: 400 });
 
-  const existing = await db.query.categories.findFirst({ where: eq(categories.name, trimmed) });
-  if (existing) return NextResponse.json({ error: "Category already exists." }, { status: 409 });
+  const all = await db.select({ name: categories.name }).from(categories);
+  if (all.some((c) => slugify(c.name) === slugify(trimmed))) {
+    return NextResponse.json({ error: "That category already exists." }, { status: 409 });
+  }
 
   const [{ last }] = await db.select({ last: max(categories.order) }).from(categories);
   const [category] = await db

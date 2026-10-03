@@ -11,7 +11,7 @@ export const revalidate = 60;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, pages, categories, tags, authors] = await Promise.all([
     db.query.posts.findMany({ where: livePosts(), columns: { slug: true, updatedAt: true } }),
-    db.query.pages.findMany({ columns: { slug: true, updatedAt: true } }),
+    db.query.pages.findMany({ where: (p, { eq }) => eq(p.kind, "custom"), columns: { slug: true, updatedAt: true } }),
     db.query.categories.findMany({ columns: { name: true } }),
     db.query.tags.findMany({ columns: { slug: true } }),
     db.query.adminUsers.findMany({ where: and(isNotNull(adminUsers.slug), ne(adminUsers.displayName, "")), columns: { slug: true } }),
@@ -19,7 +19,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: absoluteUrl("/"), changeFrequency: "daily", priority: 1 },
-    { url: absoluteUrl("/blog"), changeFrequency: "daily", priority: 0.9 },
     { url: absoluteUrl("/about"), changeFrequency: "monthly", priority: 0.5 },
     ...posts.map((p) => ({ url: absoluteUrl(`/post/${p.slug}`), lastModified: p.updatedAt, priority: 0.8 })),
     ...pages.map((p) => ({ url: absoluteUrl(`/${p.slug}`), lastModified: p.updatedAt, priority: 0.5 })),

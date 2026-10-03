@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { and, asc, desc, eq, ne, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, notInArray, or, sql } from "drizzle-orm";
 import { comments as commentsTable, db, posts } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
+import { getSiteText } from "@/lib/site-text";
 import { isMailerConfigured } from "@/lib/mailer";
 import { formatDate, summarize, readingTime } from "@/lib/utils";
 import {
   cardRelations,
+  getPostCategories,
   getPostTags,
+  inCategory,
   isLive,
   livePosts,
   postAuthorProfile,
@@ -80,12 +83,12 @@ async function getNeighbours(post: { publishedAt: Date | null; createdAt: Date }
   return { newer: newer ?? null, older: older ?? null };
 }
 
-/** Up to 3 more posts: the same category first, then the most recent. */
-async function getRelated(post: { id: string; categoryId: string | null }) {
+/** Up to 3 more posts: sharing one of its categories first, then the most recent. */
+async function getRelated(post: { id: string }, categoryIds: string[]) {
   const order = [desc(posts.publishedAt), desc(posts.createdAt)];
-  const sameCategory = post.categoryId
+  const sameCategory = categoryIds.length
     ? await db.query.posts.findMany({
-        where: and(livePosts(), eq(posts.categoryId, post.categoryId), ne(posts.id, post.id)),
+        where: and(livePosts(), or(...categoryIds.map(inCategory)), ne(posts.id, post.id)),
         with: cardRelations,
         orderBy: order,
         limit: 3,
@@ -157,12 +160,13 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   if (!post) notFound();
 
-  const [tags, comments] = await Promise.all([getPostTags(post.id), getComments(post.id)]);
+  const [tags, comments, postCategories] = await Promise.all([getPostTags(post.id), getComments(post.id), getPostCategories(post)]);
   const { html, toc } = renderPostBody(post.content);
   const byline = postByline(post, settings.authorName);
   const author = postAuthorProfile(post, settings);
+  const text = getSiteText(settings);
 
-  const [{ newer, older }, related] = await Promise.all([getNeighbours(post), getRelated(post)]);
+  const [{ newer, older }, related] = await Promise.all([getNeighbours(post), getRelated(post, postCategories.map((c) => c.id))]);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -193,27 +197,27 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            Back to Blog
+            {text.backToBlog}
           </Link>
 
-          <PostArticle post={post} categories={categories} byline={byline} tags={tags} bodyHtml={html} toc={toc} />
+          <PostArticle post={post} categories={categories} postCategories={postCategories} byline={byline} tags={tags} bodyHtml={html} toc={toc} tocTitle={text.tableOfContents} />
 
-          <AuthorBox author={author} />
+          <AuthorBox author={author} label={text.writtenBy} />
 
-          {isMailerConfigured() && <NewsletterSignup blogTitle={settings.blogTitle} />}
+          {isMailerConfigured() && <NewsletterSignup text={text} />}
 
           <footer className="post-footer">
             <Link href="/" className="post-footer__back">
-              ← Back to Blog
+              ← {text.backToBlog}
             </Link>
-            <ShareButtons title={post.title} />
+            <ShareButtons title={post.title} label={text.shareLabel} />
           </footer>
 
           {(newer || older) && (
             <nav className="post-nav" aria-label="More posts">
               {older ? (
                 <Link href={`/post/${older.slug}`} className="post-nav__link">
-                  <span className="post-nav__dir">← Previous</span>
+                  <span className="post-nav__dir">{text.previousPost}</span>
                   <span className="post-nav__title">{older.title}</span>
                 </Link>
               ) : (
@@ -221,22 +225,22 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
               )}
               {newer && (
                 <Link href={`/post/${newer.slug}`} className="post-nav__link post-nav__link--next">
-                  <span className="post-nav__dir">Next →</span>
+                  <span className="post-nav__dir">{text.nextPost}</span>
                   <span className="post-nav__title">{newer.title}</span>
                 </Link>
               )}
             </nav>
           )}
 
-          <PostComments postId={post.id} comments={comments.threads} count={comments.count} />
+          <PostComments postId={post.id} comments={comments.threads} count={comments.count} text={text} />
         </div>
 
         {related.length > 0 && (
           <section className="related">
-            <h2 className="related__title">Keep reading</h2>
+            <h2 className="related__title">{text.keepReading}</h2>
             <div className="posts-grid related__grid">
               {related.map((p) => (
-                <PostCard key={p.id} post={toPostSummary(p, settings.authorName)} categories={categories} />
+                <PostCard key={p.id} post={toPostSummary(p, settings.authorName)} categories={categories} readMore={text.readMore} />
               ))}
             </div>
           </section>

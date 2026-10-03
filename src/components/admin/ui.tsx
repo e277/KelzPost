@@ -118,34 +118,3 @@ export function ConfirmDialog({
     </div>
   );
 }
-
-/** Removable chips, used for categories and tags. */
-export function ChipList<T extends { id: string; name: string }>({
-  items,
-  empty,
-  count,
-  onRemove,
-}: {
-  items: T[];
-  empty: ReactNode;
-  count?: (item: T) => ReactNode;
-  onRemove: (item: T) => void;
-}) {
-  return (
-    <div className="tag-list">
-      {items.length === 0 ? (
-        <p className="settings-section-note settings-section-note--flush">{empty}</p>
-      ) : (
-        items.map((item) => (
-          <span className="tag-chip" key={item.id}>
-            {item.name}
-            {count && <span className="tag-chip__count">{count(item)}</span>}
-            <button type="button" title={`Remove ${item.name}`} onClick={() => onRemove(item)}>
-              ✕
-            </button>
-          </span>
-        ))
-      )}
-    </div>
-  );
-}

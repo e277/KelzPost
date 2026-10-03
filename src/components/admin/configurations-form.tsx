@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Settings } from "@/db/schema";
@@ -8,10 +9,11 @@ import { apiSend } from "@/lib/admin-api";
 import { AdminCard, Field, LabelNote } from "./ui";
 
 /**
- * Configurations: how the public site looks (name, colors, homepage hero and layout,
- * social links and footer).
- * Content lives elsewhere: pages and the header menu under Pages, categories and tags
- * under Categories, and each person's name and password under Your Profile.
+ * Configurations: how the public site looks (name, colors, homepage layout, social
+ * links and footer); the site's fixed wording is in the Site text form below it.
+ * Content lives elsewhere: pages (including the home page's hero text) and the header
+ * menu under Pages, categories and tags under Categories, and each person's name and
+ * password under Your Profile.
  */
 export function ConfigurationsForm({ settings }: { settings: Settings }) {
   const router = useRouter();
@@ -28,7 +30,6 @@ export function ConfigurationsForm({ settings }: { settings: Settings }) {
   const [socialGithub, setSocialGithub] = useState(settings.socialGithub);
 
   // Hero
-  const [heroTag, setHeroTag] = useState(settings.heroTag ?? "Personal Blog");
   const [heroLayout, setHeroLayout] = useState(settings.heroLayout ?? "centered");
 
   // Layout
@@ -53,7 +54,6 @@ export function ConfigurationsForm({ settings }: { settings: Settings }) {
         socialInstagram: socialInstagram.trim(),
         socialLinkedin: socialLinkedin.trim(),
         socialGithub: socialGithub.trim(),
-        heroTag: heroTag.trim(),
         heroLayout,
         postsLayout,
         footerText: footerText.trim(),
@@ -91,9 +91,9 @@ export function ConfigurationsForm({ settings }: { settings: Settings }) {
         </AdminCard>
 
         <AdminCard title="Hero Section">
-          <Field label={<>Tag Label <LabelNote>(small text above title)</LabelNote></>} htmlFor="heroTag">
-            <input type="text" id="heroTag" placeholder="Personal Blog" value={heroTag} onChange={(e) => setHeroTag(e.target.value)} />
-          </Field>
+          <p className="settings-section-note">
+            The hero&apos;s wording is edited with the page: <Link href="/admin/pages/home">Pages → Home</Link>.
+          </p>
           <Field label="Layout">
             <LayoutChoice
               name="heroLayout"
