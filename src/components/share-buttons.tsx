@@ -34,7 +34,7 @@ const ICONS = {
   ),
 };
 
-export function ShareButtons({ title }: { title: string }) {
+export function ShareButtons({ title, label = "Share" }: { title: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   // false during SSR/hydration, then the real value — avoids a hydration mismatch.
   const canNativeShare = useSyncExternalStore(noopSubscribe, () => "share" in navigator, () => false);
@@ -62,7 +62,7 @@ export function ShareButtons({ title }: { title: string }) {
 
   return (
     <div className="share">
-      <span className="share__label">Share</span>
+      <span className="share__label">{label}</span>
       <button type="button" className="share__btn" title="Share on X" onClick={() => open((u, t) => `https://x.com/intent/post?url=${u}&text=${t}`)}>
         {ICONS.x}
       </button>

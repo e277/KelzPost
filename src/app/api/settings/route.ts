@@ -3,8 +3,7 @@ import { db, settings as settingsTable } from "@/db";
 import { getSettings } from "@/lib/site";
 import { DEFAULT_SETTINGS } from "@/lib/defaults";
 import { requireUser } from "@/lib/current-user";
-import { ABOUT_PAGE_ID } from "@/lib/nav-links";
-import { syncPageNavLink } from "@/lib/navigation";
+import { cleanSiteText } from "@/lib/site-text";
 import { refreshPublicPages } from "@/lib/revalidate";
 
 const FIELDS = [
@@ -16,13 +15,10 @@ const FIELDS = [
   "authorAvatar",
   "accentColor",
   "navyColor",
-  "aboutTitle",
-  "aboutContent",
   "socialTwitter",
   "socialInstagram",
   "socialLinkedin",
   "socialGithub",
-  "heroTag",
   "heroLayout",
   "footerText",
   "postsLayout",
@@ -42,25 +38,16 @@ export async function PUT(req: NextRequest) {
   for (const field of FIELDS) {
     if (typeof body[field] === "string") data[field] = body[field];
   }
-  const aboutInNav = typeof body.aboutInNav === "boolean" ? body.aboutInNav : undefined;
-  if (Object.keys(data).length === 0 && aboutInNav === undefined) return NextResponse.json(await getSettings());
+  // Site text is sent whole: the full set of overrides replaces the old one.
+  const update: typeof data & { siteText?: Record<string, string> } = { ...data };
+  if (body.siteText !== undefined) update.siteText = cleanSiteText(body.siteText);
+  if (Object.keys(update).length === 0) return NextResponse.json(await getSettings());
 
-  let settings =
-    Object.keys(data).length === 0
-      ? await getSettings()
-      : (
-          await db
-            .insert(settingsTable)
-            .values({ id: 1, ...DEFAULT_SETTINGS, ...data })
-            .onConflictDoUpdate({ target: settingsTable.id, set: data })
-            .returning()
-        )[0];
-
-  // The About page's header link follows its title, like any other page's.
-  if (data.aboutTitle !== undefined || aboutInNav !== undefined) {
-    await syncPageNavLink({ id: ABOUT_PAGE_ID, title: settings.aboutTitle || "About", slug: "about" }, aboutInNav);
-    settings = await getSettings();
-  }
+  const [settings] = await db
+    .insert(settingsTable)
+    .values({ id: 1, ...DEFAULT_SETTINGS, ...update })
+    .onConflictDoUpdate({ target: settingsTable.id, set: update })
+    .returning();
 
   refreshPublicPages();
   return NextResponse.json(settings);

@@ -1,4 +1,4 @@
-import { and, asc, eq, exists, inArray, lte, max, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lte, max, sql } from "drizzle-orm";
 import { categories, db, postCategories, posts, postTags, tags, type AdminUser, type Category, type Post, type Settings, type Tag } from "@/db";
 import { highlightCodeBlocks } from "@/lib/highlight";
 import { readingTime, slugify, summarize } from "@/lib/utils";
@@ -86,14 +86,13 @@ export async function getPostCategories(post: Pick<Post, "id" | "categoryId">): 
     .sort((a, b) => Number(b.id === post.categoryId) - Number(a.id === post.categoryId) || a.order - b.order);
 }
 
-/** SQL condition: the post is filed under the category (as its main category or another one). */
+/**
+ * SQL condition: the post is filed under the category (as its main category or another one).
+ * The subquery must not refer to the outer Post table: relational queries (db.query.posts)
+ * alias it, so a correlated reference to "Post"."id" fails with "missing FROM-clause entry".
+ */
 export const inCategory = (categoryId: string) =>
-  exists(
-    db
-      .select({ one: sql`1` })
-      .from(postCategories)
-      .where(and(eq(postCategories.postId, posts.id), eq(postCategories.categoryId, categoryId)))
-  );
+  inArray(posts.id, db.select({ postId: postCategories.postId }).from(postCategories).where(eq(postCategories.categoryId, categoryId)));
 
 export async function getPostTags(postId: string): Promise<Tag[]> {
   const rows = await db.query.postTags.findMany({ where: eq(postTags.postId, postId), with: { tag: true } });

@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, settings as settingsTable } from "@/db";
 import { getSettings } from "@/lib/site";
-import { ABOUT_PAGE_ID, BLOG_PAGE_ID, HOME_PAGE_ID, parseNavLinks, type NavLink } from "@/lib/nav-links";
+import { parseNavLinks, type NavLink } from "@/lib/nav-links";
+import { ensureBuiltInPages } from "@/lib/site-pages";
 
 type NavPage = { id: string; title: string; slug: string };
 
@@ -51,20 +52,17 @@ export function isPageInNav(navLinks: string, page: NavPage): boolean {
   return parseNavLinks(navLinks).some((l) => l.pageId === page.id || (!l.pageId && l.href === hrefFor(page)));
 }
 
-/** A page that can be in the header menu: the built-in Home, Blog and About, or a custom page. */
+/** A page that can be in the header menu: the built-in Home and About, or a custom page. */
 export type MenuPage = { id: string; title: string; href: string };
 
+/** Every page, built-in ones (Home, then About) first, then custom pages oldest first. */
 export async function listMenuPages(): Promise<MenuPage[]> {
-  const [settings, pages] = await Promise.all([
-    getSettings(),
-    db.query.pages.findMany({ columns: { id: true, title: true, slug: true }, orderBy: (p, { asc }) => asc(p.createdAt) }),
-  ]);
-  return [
-    { id: HOME_PAGE_ID, title: "Home", href: "/" },
-    { id: BLOG_PAGE_ID, title: "Blog", href: "/blog" },
-    { id: ABOUT_PAGE_ID, title: settings.aboutTitle || "About", href: "/about" },
-    ...pages.map((p) => ({ id: p.id, title: p.title, href: hrefFor(p) })),
-  ];
+  await ensureBuiltInPages();
+  const pages = await db.query.pages.findMany({
+    columns: { id: true, title: true, slug: true },
+    orderBy: (p, { asc }) => [asc(sql`case ${p.kind} when 'home' then 0 when 'about' then 1 else 2 end`), asc(p.createdAt)],
+  });
+  return pages.map((p) => ({ id: p.id, title: p.title, href: hrefFor(p) }));
 }
 
 /** The ids of the pages in the header menu, in menu order. */

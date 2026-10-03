@@ -8,11 +8,14 @@ export function PostCard({
   categories,
   featured,
   layout = "grid",
+  readMore = "Read More →",
 }: {
   post: PostSummary;
   categories: Pick<Category, "name">[];
   featured?: boolean;
   layout?: "grid" | "list";
+  /** Wording of the link at the bottom of the card (Admin → Configurations → Site text). */
+  readMore?: string;
 }) {
   const excerpt = featured ? post.summary : summarize(post.summary, "", 150);
   return (
@@ -53,7 +56,7 @@ export function PostCard({
             By {post.byline.href ? <Link href={post.byline.href}>{post.byline.name}</Link> : post.byline.name}
           </span>
           <Link href={`/post/${post.slug}`} className="post-card__read-more" aria-label={`Read more: ${post.title}`}>
-            Read More →
+            {readMore}
           </Link>
         </div>
       </div>

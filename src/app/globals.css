@@ -247,6 +247,10 @@ a.filter-btn { display: inline-flex; align-items: center; gap: 6px; text-decorat
 .filter-btn__count { font-weight: 500; opacity: .7; }
 
 /* ── POST GRID ── */
+/* Optional introduction from Admin → Pages → Home, between the hero and the posts. */
+.home-intro { max-width: 760px; margin: 0 auto; padding: 48px 24px 0; }
+.home-intro .post-body > :last-child { margin-bottom: 0; }
+
 .blog-main {
   max-width: 1200px; margin: 0 auto;
   padding: 40px 24px 80px;
@@ -736,6 +740,8 @@ body > main { margin-bottom: 0; }
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   color: var(--navy); margin-bottom: 12px;
 }
+.about-eyebrow { display: inline-block; margin-bottom: 12px; }
+.about-subheading { color: var(--gray-600); font-size: 1.1rem; max-width: 600px; margin: 0 auto 16px; }
 .about-name { font-size: 1.05rem; font-weight: 600; color: var(--gold); margin-bottom: 8px; }
 .about-bio { color: var(--gray-600); font-size: 1.02rem; max-width: 560px; margin: 0 auto; }
 .about-body { font-size: 1.05rem; line-height: 1.85; color: var(--gray-800); }
@@ -1884,3 +1890,7 @@ html[data-theme="dark"] .post-card:hover .post-card__title a { color: color-mix(
   font: inherit; font-size: .88rem; background: var(--white);
 }
 .term-row__edit input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,146,42,.12); }
+
+/* Admin → Configurations → Site text */
+.admin-section-title { font-size: 1.15rem; font-weight: 700; color: var(--navy); margin: 48px 0 8px; }
+.comments__count { color: var(--gray-400); font-weight: 500; }

@@ -5,6 +5,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -55,8 +56,6 @@ export const settings = pgTable("Settings", {
   authorAvatar: text("authorAvatar").notNull().default(""),
   accentColor: text("accentColor").notNull().default("#C8922A"),
   navyColor: text("navyColor").notNull().default("#0A1F44"),
-  aboutTitle: text("aboutTitle").notNull().default("About"),
-  aboutContent: text("aboutContent").notNull().default(""),
   socialTwitter: text("socialTwitter").notNull().default(""),
   socialInstagram: text("socialInstagram").notNull().default(""),
   socialLinkedin: text("socialLinkedin").notNull().default(""),
@@ -64,23 +63,42 @@ export const settings = pgTable("Settings", {
   navLinks: text("navLinks")
     .notNull()
     .default('[{"label":"Home","href":"/"},{"label":"About","href":"/about"}]'),
-  heroTag: text("heroTag").notNull().default("Personal Blog"),
   heroLayout: text("heroLayout").notNull().default("centered"),
   footerText: text("footerText").notNull().default(""),
   postsLayout: text("postsLayout").notNull().default("grid"),
+  // Overrides for the fixed wording around the site (buttons, headings, messages),
+  // keyed by the names in src/lib/site-text.ts; anything missing uses the default.
+  siteText: jsonb("siteText").$type<Record<string, string>>().notNull().default({}),
 });
 
+// The site's pages. "home" (at /, with the post listing under it) and "about"
+// (at /about, with the author's photo, name and bio) are built in: there is one
+// row of each, with the id "home" / "about", and they can be edited but not
+// deleted. Everything else is a "custom" page at /<slug>.
 export const pages = pgTable(
   "Page",
   {
     id: id(),
+    kind: text("kind").notNull().default("custom"),
+    // Menu label and browser-tab title.
     title: text("title").notNull(),
+    // Address without the leading slash; "" for the home page.
     slug: text("slug").notNull(),
+    // Small label above the heading, the big heading (blank = the title) and a line under it.
+    eyebrow: text("eyebrow").notNull().default(""),
+    heading: text("heading").notNull().default(""),
+    subheading: text("subheading").notNull().default(""),
     content: text("content").notNull().default(""),
+    // Optional overrides for search engines and link previews.
+    seoTitle: text("seoTitle").notNull().default(""),
+    seoDescription: text("seoDescription").notNull().default(""),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("Page_slug_key").on(t.slug)]
+  (t) => [
+    uniqueIndex("Page_slug_key").on(t.slug),
+    uniqueIndex("Page_kind_key").on(t.kind).where(sql`${t.kind} <> 'custom'`),
+  ]
 );
 
 export const categories = pgTable(

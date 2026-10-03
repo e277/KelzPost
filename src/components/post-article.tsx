@@ -14,6 +14,7 @@ export function PostArticle({
   tags = [],
   bodyHtml,
   toc = [],
+  tocTitle = "In this article",
 }: {
   post: PostWithCategory;
   categories: Category[];
@@ -24,6 +25,8 @@ export function PostArticle({
   /** Content to render instead of post.content (e.g. with heading anchors added). */
   bodyHtml?: string;
   toc?: TocItem[];
+  /** Heading of the table of contents (Admin → Configurations → Site text). */
+  tocTitle?: string;
 }) {
   const minutes = readingTime(post.content);
   const updated = post.publishedAt && post.updatedAt.getTime() - post.publishedAt.getTime() > 60_000;
@@ -66,7 +69,7 @@ export function PostArticle({
 
       {toc.length >= 3 && (
         <details className="post-toc" open>
-          <summary>In this article</summary>
+          <summary>{tocTitle}</summary>
           <ol>
             {toc.map((item) => (
               <li key={item.id} className={item.level === 3 ? "post-toc__sub" : undefined}>

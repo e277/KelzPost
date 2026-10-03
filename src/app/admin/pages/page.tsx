@@ -4,55 +4,39 @@ import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { PageList, type PageListRow } from "@/components/admin/page-list";
 import { formatDate } from "@/lib/utils";
-import { ABOUT_PAGE_ID, BLOG_PAGE_ID, HOME_PAGE_ID } from "@/lib/nav-links";
 import { listMenuPages, menuPageIds } from "@/lib/navigation";
+import { ensureBuiltInPages, isBuiltInPage, pageHref } from "@/lib/site-pages";
 import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
+const BUILT_IN_NOTES: Record<string, string> = {
+  home: "The hero and intro above your posts, with your categories as filters",
+  about: "Shows your author photo, name and bio above the content",
+};
+
 export default async function AdminPagesPage() {
   await requirePageUser("admin");
+  await ensureBuiltInPages();
   const [settings, pages, menuPages] = await Promise.all([
     getSettings(),
     db.query.pages.findMany({ orderBy: (p, { asc }) => asc(p.createdAt) }),
     listMenuPages(),
   ]);
 
-  const rows: PageListRow[] = [
-    {
-      id: HOME_PAGE_ID,
-      title: "Home",
-      builtIn: true,
-      meta: "/ · Your newest posts under the homepage hero",
-      viewHref: "/",
-      editHref: "/admin/configurations",
-      editLabel: "Configure",
-    },
-    {
-      id: BLOG_PAGE_ID,
-      title: "Blog",
-      builtIn: true,
-      meta: "/blog · Every post, with your categories as filters along the top",
-      viewHref: "/blog",
-      editHref: "/admin/categories",
-      editLabel: "Categories",
-    },
-    {
-      id: ABOUT_PAGE_ID,
-      title: settings.aboutTitle || "About",
-      builtIn: true,
-      meta: "/about · Shows your author photo, name and bio above the content",
-      viewHref: "/about",
-      editHref: "/admin/pages/about",
-    },
-    ...pages.map((page) => ({
+  const order = (kind: string) => (kind === "home" ? 0 : kind === "about" ? 1 : 2);
+  const rows: PageListRow[] = [...pages]
+    .sort((a, b) => order(a.kind) - order(b.kind))
+    .map((page) => ({
       id: page.id,
       title: page.title,
-      meta: `/${page.slug} · Updated ${formatDate(page.updatedAt)}`,
-      viewHref: `/${page.slug}`,
+      builtIn: isBuiltInPage(page),
+      meta: isBuiltInPage(page)
+        ? `${pageHref(page)} · ${BUILT_IN_NOTES[page.kind] ?? "Built-in page"}`
+        : `${pageHref(page)} · Updated ${formatDate(page.updatedAt)}`,
+      viewHref: pageHref(page),
       editHref: `/admin/pages/${page.id}`,
-    })),
-  ];
+    }));
 
   return (
     <AdminShell

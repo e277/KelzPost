@@ -1,14 +1,14 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import type { Category, Settings } from "@/db/schema";
 import type { PostSummary } from "@/lib/posts";
+import { getSiteText } from "@/lib/site-text";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
-import { PostCard } from "./post-card";
+import { PostListing } from "./post-listing";
 
-const CRUMBS = { Blog: "Blog", Tag: "Tags", Author: "Authors" } as const;
+const CRUMBS = { Tag: "Tags", Author: "Authors" } as const;
 
-/** Shared layout for the Blog page and the tag and author archives: banner, post grid and pagination. */
+/** Shared layout for the tag and author archives: banner, post grid and pagination. */
 export function ArchiveListing({
   settings,
   categories,
@@ -17,7 +17,6 @@ export function ArchiveListing({
   bio,
   avatar,
   basePath,
-  filters,
   posts,
   total,
   page,
@@ -30,15 +29,14 @@ export function ArchiveListing({
   /** Author archives only. */
   bio?: string;
   avatar?: string;
-  /** Address of page 1; may already carry a query string. */
+  /** Address of page 1. */
   basePath: string;
-  /** Shown between the banner and the posts, like the Blog page's category filters. */
-  filters?: ReactNode;
   posts: PostSummary[];
   total: number;
   page: number;
   pageCount: number;
 }) {
+  const text = getSiteText(settings);
   const href = (n: number) => (n <= 1 ? basePath : `${basePath}${basePath.includes("?") ? "&" : "?"}page=${n}`);
 
   return (
@@ -62,50 +60,24 @@ export function ArchiveListing({
         </div>
       </section>
 
-      {filters}
-
-      <main className="blog-main">
-        {posts.length === 0 ? (
-          <div className="posts-grid">
-            <div className="posts-grid--empty">
-              <p>No articles here yet.</p>
-              <p style={{ marginTop: 12 }}>
-                <Link href="/" className="link-btn">
-                  Browse all articles
-                </Link>
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="posts-grid">
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} categories={categories} />
-            ))}
-          </div>
-        )}
-
-        {pageCount > 1 && (
-          <nav className="pagination" aria-label="Pagination">
-            {page > 1 ? (
-              <Link href={href(page - 1)} className="pagination__link" rel="prev">
-                ← Newer
+      <PostListing
+        posts={posts}
+        categories={categories}
+        text={text}
+        page={page}
+        pageCount={pageCount}
+        pageHref={href}
+        empty={
+          <>
+            <p>{text.emptyListing}</p>
+            <p style={{ marginTop: 12 }}>
+              <Link href="/" className="link-btn">
+                Browse all articles
               </Link>
-            ) : (
-              <span className="pagination__link is-disabled">← Newer</span>
-            )}
-            <span className="pagination__status">
-              Page {page} of {pageCount}
-            </span>
-            {page < pageCount ? (
-              <Link href={href(page + 1)} className="pagination__link" rel="next">
-                Older →
-              </Link>
-            ) : (
-              <span className="pagination__link is-disabled">Older →</span>
-            )}
-          </nav>
-        )}
-      </main>
+            </p>
+          </>
+        }
+      />
 
       <SiteFooter settings={settings} />
     </>
