@@ -1,6 +1,6 @@
 import { and, desc, ilike, or, sql } from "drizzle-orm";
 import { db, posts, postSearchDocument } from "@/db";
-import { cardRelations, livePosts, toPostSummary, type PostSummary } from "@/lib/posts";
+import { cardRelations, livePosts, toPostSummary, type DefaultAuthor, type PostSummary } from "@/lib/posts";
 
 export type SearchResult = PostSummary & {
   /** Matching passage as HTML-escaped text with matched words wrapped in <mark>. */
@@ -38,7 +38,7 @@ function toSnippet(headline: string): string {
  * Falls back to a plain substring match on titles and excerpts when the full
  * text search finds nothing, so partial words still turn something up.
  */
-export async function searchPosts(rawQuery: string, defaultAuthor: string): Promise<SearchResult[]> {
+export async function searchPosts(rawQuery: string, defaultAuthor: DefaultAuthor): Promise<SearchResult[]> {
   const q = rawQuery.trim().slice(0, 200);
   if (!q) return [];
 

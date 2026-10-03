@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Category, Post, Tag } from "@/db/schema";
 import type { Byline, TocItem } from "@/lib/posts";
+import { AuthorAvatar } from "@/components/author-avatar";
 import { formatDate, categoryBadgeClass, readingTime, categoryHref } from "@/lib/utils";
 
 type PostWithCategory = Post & { category: Category | null };
@@ -42,8 +43,11 @@ export function PostArticle({
         <h1 className="post-title">{post.title}</h1>
         {post.excerpt && <p className="post-lede">{post.excerpt}</p>}
         <div className="post-meta">
-          <span>
-            By <strong>{byline.href ? <Link href={byline.href}>{byline.name}</Link> : byline.name}</strong>
+          <span className="post-meta__author">
+            <AuthorAvatar name={byline.name} src={byline.avatar} />
+            <span>
+              By <strong>{byline.href ? <Link href={byline.href}>{byline.name}</Link> : byline.name}</strong>
+            </span>
           </span>
           <span className="post-meta-divider" />
           <time dateTime={(post.publishedAt || post.createdAt).toISOString()}>

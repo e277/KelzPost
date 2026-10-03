@@ -39,7 +39,7 @@ async function main() {
   let moved = 0;
 
   try {
-    const { posts, pages, settings } = schema;
+    const { posts, pages, settings, adminUsers } = schema;
     const inlinePosts = await db
       .select({ id: posts.id, coverImage: posts.coverImage, ogImage: posts.ogImage, content: posts.content })
       .from(posts)
@@ -61,6 +61,16 @@ async function main() {
       .where(like(pages.content, "%data:image/%"));
     for (const page of inlinePages) {
       await sql`UPDATE "Page" SET "content" = ${await moveInlineImages(page.content)} WHERE "id" = ${page.id}`;
+      moved++;
+    }
+
+    // Profile photos show next to every byline, so they shouldn't stay inline.
+    const inlineAvatars = await db
+      .select({ id: adminUsers.id, avatar: adminUsers.avatar })
+      .from(adminUsers)
+      .where(like(adminUsers.avatar, "data:%"));
+    for (const user of inlineAvatars) {
+      await db.update(adminUsers).set({ avatar: await moveDataUrl(user.avatar) }).where(eq(adminUsers.id, user.id));
       moved++;
     }
 

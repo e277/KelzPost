@@ -200,6 +200,11 @@ Everyone fills in their public name, bio and photo, and changes their password, 
 **Admin → Your Profile**. Once a writer has a name, their posts link to their author page
 (`/author/their-name`), which lists everything they've published.
 
+Next to that name, posts show the writer's photo as a round avatar: on post cards, under
+the post title, in the author box and on their author page. Without a photo it shows their
+initials. Guest authors always show initials; posts not credited to anyone use the photo
+under **Pages → About → About the Author**.
+
 Which name a post shows, in order:
 
 1. The post's **Guest author** field, if filled in (for one-off writers without an account)

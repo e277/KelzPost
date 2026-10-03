@@ -62,7 +62,7 @@ export default async function AuthorPage({ params, searchParams }: Props) {
       bio={author.bio}
       avatar={author.avatar}
       basePath={`/author/${slug}`}
-      posts={rows.map((p) => toPostSummary(p, settings.authorName))}
+      posts={rows.map((p) => toPostSummary(p, settings))}
       total={total}
       page={page}
       pageCount={pageCount}

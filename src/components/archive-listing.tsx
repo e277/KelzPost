@@ -5,6 +5,7 @@ import type { PostSummary } from "@/lib/posts";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { PostCard } from "./post-card";
+import { AuthorAvatar } from "./author-avatar";
 
 const CRUMBS = { Blog: "Blog", Tag: "Tags", Author: "Authors" } as const;
 
@@ -52,7 +53,7 @@ export function ArchiveListing({
             <span aria-hidden="true">/</span>
             <span>{CRUMBS[kind]}</span>
           </nav>
-          {avatar && <img src={avatar} alt="" className="archive-hero__avatar" />}
+          {kind === "Author" && <AuthorAvatar name={name} src={avatar ?? ""} className="archive-hero__avatar" />}
           <span className="blog-hero__tag">{kind}</span>
           <h1 className="archive-hero__title">{kind === "Tag" ? `#${name}` : name}</h1>
           {bio && <p className="archive-hero__bio">{bio}</p>}

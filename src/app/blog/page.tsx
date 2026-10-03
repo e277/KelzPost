@@ -90,7 +90,7 @@ export default async function BlogPage({ searchParams }: Props) {
       name={category ? category.name : "All Articles"}
       basePath={category ? categoryHref(category.name) : "/blog"}
       filters={filters}
-      posts={rows.map((p) => toPostSummary(p, settings.authorName))}
+      posts={rows.map((p) => toPostSummary(p, settings))}
       total={total}
       page={page}
       pageCount={pageCount}

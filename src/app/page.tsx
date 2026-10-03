@@ -23,7 +23,7 @@ export default async function HomePage() {
     db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),
   ]);
   // Cards only need a summary; post bodies stay on the server.
-  const posts = rows.map((p) => toPostSummary(p, settings.authorName));
+  const posts = rows.map((p) => toPostSummary(p, settings));
 
   const heroLayout = settings.heroLayout === "split" ? "split" : "centered";
 

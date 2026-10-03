@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Category } from "@/db/schema";
 import type { PostSummary } from "@/lib/posts";
+import { AuthorAvatar } from "@/components/author-avatar";
 import { formatDate, categoryBadgeClass, categoryHref, summarize } from "@/lib/utils";
 
 export function PostCard({
@@ -50,7 +51,10 @@ export function PostCard({
         {excerpt && <p className="post-card__excerpt">{excerpt}</p>}
         <div className="post-card__footer">
           <span className="post-card__author">
-            By {post.byline.href ? <Link href={post.byline.href}>{post.byline.name}</Link> : post.byline.name}
+            <AuthorAvatar name={post.byline.name} src={post.byline.avatar} />
+            <span>
+              By {post.byline.href ? <Link href={post.byline.href}>{post.byline.name}</Link> : post.byline.name}
+            </span>
           </span>
           <Link href={`/post/${post.slug}`} className="post-card__read-more" aria-label={`Read more: ${post.title}`}>
             Read More →
