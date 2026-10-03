@@ -6,7 +6,7 @@ import { comments as commentsTable, db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { isMailerConfigured } from "@/lib/mailer";
 import { formatDate, summarize, readingTime } from "@/lib/utils";
-import { cardRelations, getPostTags, isLive, livePosts, toPostSummary, withHeadingAnchors } from "@/lib/posts";
+import { cardRelations, getPostTags, isLive, livePosts, toPostSummary, renderPostBody } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PostArticle } from "@/components/post-article";
@@ -105,7 +105,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   if (!post) notFound();
 
   const [tags, comments] = await Promise.all([getPostTags(post.id), getComments(post.id)]);
-  const { html, toc } = withHeadingAnchors(post.content);
+  const { html, toc } = renderPostBody(post.content);
 
   // Chronological neighbours and up to 3 related posts (same category first, then most recent).
   const published = await db.query.posts.findMany({

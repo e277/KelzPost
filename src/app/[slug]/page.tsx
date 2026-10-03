@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { highlightCodeBlocks } from "@/lib/highlight";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function CustomPage({ params }: { params: Promise<{ slug: s
             <h1 className="about-title">{page.title}</h1>
           </div>
           {page.content ? (
-            <div className="about-body" dangerouslySetInnerHTML={{ __html: page.content }} />
+            <div className="about-body post-body" dangerouslySetInnerHTML={{ __html: highlightCodeBlocks(page.content) }} />
           ) : (
             <div className="about-empty">This page has no content yet.</div>
           )}

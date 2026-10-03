@@ -1566,3 +1566,80 @@ html[data-theme="dark"] .search-result__meta a:hover { color: var(--dk-heading);
   border: 3px solid rgba(255,255,255,.2); margin-bottom: 14px;
 }
 .archive-hero__bio { color: rgba(255,255,255,.8); max-width: 640px; margin-bottom: 10px; }
+
+/* ── Rich text editor (Tiptap) ── */
+.toolbar-select {
+  height: 32px; padding: 0 8px;
+  border: 1.5px solid var(--gray-200); border-radius: 5px;
+  background: var(--white); color: var(--gray-600);
+  font: 600 .8rem var(--font-body); cursor: pointer;
+}
+.toolbar-select:focus { outline: none; border-color: var(--gold); }
+.toolbar-btn:disabled { opacity: .35; cursor: default; background: transparent; }
+.toolbar-btn__text { font-size: .68rem; letter-spacing: .02em; }
+.editor-context {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding: 8px 12px;
+  background: var(--off-white);
+  border: 1.5px solid var(--gray-200); border-bottom: none;
+  font-size: .8rem; color: var(--gray-600);
+}
+.editor-context label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.editor-context .btn--sm { padding: 5px 10px; font-size: .76rem; }
+.editor-area--loading { min-height: 420px; background: var(--white); }
+.editor-area p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left; height: 0; pointer-events: none;
+  color: var(--gray-300);
+}
+.editor-area h4 { font-size: 1rem; color: var(--navy); font-weight: 700; margin: 16px 0 6px; }
+.editor-area li > p, .post-body li > p { margin: 0; }
+.editor-area blockquote > p:last-child, .post-body blockquote > p:last-child { margin-bottom: 0; }
+.editor-area code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em;
+  background: var(--gray-100); padding: 2px 5px; border-radius: 4px;
+}
+.editor-area pre code { background: none; padding: 0; color: inherit; }
+.editor-area table { border-collapse: collapse; width: 100%; margin: 16px 0; table-layout: fixed; }
+.editor-area th, .editor-area td {
+  border: 1px solid var(--gray-300); padding: 6px 10px;
+  vertical-align: top; position: relative;
+}
+.editor-area th { background: var(--gray-100); font-weight: 700; text-align: left; }
+.editor-area td p, .editor-area th p, .post-body td p, .post-body th p { margin: 0; }
+.editor-area .selectedCell::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: rgba(200,146,42,.15);
+}
+.editor-area img.ProseMirror-selectednode,
+.editor-area [data-youtube-video].ProseMirror-selectednode { outline: 3px solid var(--gold); outline-offset: 2px; }
+.editor-area [data-youtube-video], .post-body [data-youtube-video] { margin: 24px 0; }
+.editor-area [data-youtube-video] iframe,
+.post-body [data-youtube-video] iframe {
+  display: block; width: 100%; height: auto; aspect-ratio: 16 / 9;
+  border: 0; border-radius: var(--radius-sm);
+}
+.post-body h4 { font-size: 1.05rem; color: var(--navy); font-weight: 700; margin: 28px 0 10px; }
+.post-body th { background: var(--gray-100); font-weight: 700; }
+html[data-theme="dark"] .post-body h4 { color: var(--dk-heading); }
+html[data-theme="dark"] .post-body th { background: var(--dk-raised); }
+
+/* Code highlighting (highlight.js classes, added on the server) */
+.hljs-comment, .hljs-quote { color: #7f8ea3; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type, .hljs-doctag { color: #c792ea; }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-tag { color: #c3e88d; }
+.hljs-number, .hljs-literal, .hljs-symbol { color: #f78c6c; }
+.hljs-title, .hljs-section, .hljs-title.function_ { color: #82aaff; }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-property, .hljs-params { color: #ffcb6b; }
+.hljs-meta, .hljs-bullet, .hljs-link, .hljs-selector-class, .hljs-selector-id { color: #89ddff; }
+.hljs-tag, .hljs-name, .hljs-deletion, .hljs-selector-attr { color: #f07178; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+.post-body td > p:empty::after, .post-body th > p:empty::after { content: "\00a0"; }
+.dash-control {
+  padding: 7px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: .85rem;
+}

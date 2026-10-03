@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { getSettings } from "@/lib/site";
-import { getPostTags, isLive, isScheduled, withHeadingAnchors } from "@/lib/posts";
+import { getPostTags, isLive, isScheduled, renderPostBody } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PostArticle } from "@/components/post-article";
@@ -22,7 +22,7 @@ export default async function PreviewPostPage({ params }: { params: Promise<{ id
   if (!post) notFound();
 
   const tags = await getPostTags(post.id);
-  const { html, toc } = withHeadingAnchors(post.content);
+  const { html, toc } = renderPostBody(post.content);
 
   return (
     <>

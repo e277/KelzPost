@@ -116,14 +116,6 @@ export function DashboardContent({
     }
   };
 
-  const controlStyle = {
-    padding: "7px 12px",
-    border: "1.5px solid var(--gray-200)",
-    borderRadius: "var(--radius-sm)",
-    fontFamily: "var(--font-body)",
-    fontSize: ".85rem",
-  };
-
   return (
     <>
       <p className="dash-greeting" suppressHydrationWarning>
@@ -161,15 +153,15 @@ export function DashboardContent({
               placeholder="Search posts…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={controlStyle}
+              className="dash-control"
               aria-label="Search posts"
             />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={controlStyle} aria-label="Filter by status">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="dash-control" aria-label="Filter by status">
               <option value="all">All Status</option>
               <option value="published">Published</option>
               <option value="draft">Draft</option>
             </select>
-            <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} style={controlStyle} aria-label="Sort posts">
+            <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="dash-control" aria-label="Sort posts">
               <option value="updated">Last edited</option>
               <option value="created">Newest</option>
               <option value="title">Title A–Z</option>

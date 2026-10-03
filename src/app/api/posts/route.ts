@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, posts } from "@/db";
 import { getSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
+import { sanitizePostHtml } from "@/lib/sanitize";
 import { livePosts, parsePublishDate, parseTagNames, setPostTags } from "@/lib/posts";
 
 export async function GET(req: NextRequest) {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
       title,
       slug,
       excerpt: body.excerpt || "",
-      content: body.content || "",
+      content: sanitizePostHtml(typeof body.content === "string" ? body.content : ""),
       coverImage: body.coverImage || "",
       status,
       author: body.author || "",

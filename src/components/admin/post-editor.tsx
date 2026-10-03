@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Category, Post } from "@/db/schema";
@@ -8,6 +8,7 @@ import { useToast } from "@/components/toast";
 import { slugify, wordCount } from "@/lib/utils";
 import { uploadImage } from "@/lib/image";
 import { ImageUpload } from "./image-upload";
+import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
 
 type PostWithCategory = Post & { category: Category | null };
 
@@ -23,11 +24,7 @@ function parseTagInput(raw: string): string[] {
   return raw.split(",").map((t) => t.trim()).filter(Boolean);
 }
 
-const TOOLBAR_BUTTONS: { cmd: string; title: string; label: React.ReactNode }[] = [
-  { cmd: "bold", title: "Bold", label: <b>B</b> },
-  { cmd: "italic", title: "Italic", label: <i>I</i> },
-  { cmd: "underline", title: "Underline", label: <u>U</u> },
-];
+const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 export function PostEditor({
   categories,
@@ -44,7 +41,6 @@ export function PostEditor({
 }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
-  const editorRef = useRef<HTMLDivElement>(null);
 
   const [title, setTitle] = useState(post?.title || "");
   const [status, setStatus] = useState(post?.status || "draft");
@@ -64,13 +60,17 @@ export function PostEditor({
   const [words, setWords] = useState(() => wordCount(post?.content || ""));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editorRef.current && post?.content) {
-      editorRef.current.innerHTML = post.content;
-    }
-  }, [post]);
+  const { editor, insertImages } = useRichTextEditor({
+    content: post?.content || "",
+    placeholder: "Start writing your article here…",
+    onUpdate: (e) => {
+      setWords(countWords(e.getText()));
+      setDirty(true);
+    },
+    uploadImage,
+    onError: (m) => showToast(m, "error"),
+  });
 
   // Warn before leaving the page with unsaved changes.
   useEffect(() => {
@@ -84,44 +84,6 @@ export function PostEditor({
 
   const markDirty = () => setDirty(true);
 
-  const onContentInput = () => {
-    setWords(wordCount(editorRef.current?.innerHTML || ""));
-    markDirty();
-  };
-
-  const insertImage = async (file: File) => {
-    try {
-      const src = await uploadImage(file);
-      editorRef.current?.focus();
-      document.execCommand("insertImage", false, src);
-      onContentInput();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not insert image.", "error");
-    }
-  };
-
-  const runCmd = (cmd: string) => {
-    editorRef.current?.focus();
-    if (cmd === "h2" || cmd === "h3") {
-      document.execCommand("formatBlock", false, cmd);
-    } else if (cmd === "blockquote") {
-      document.execCommand("formatBlock", false, "blockquote");
-    } else if (cmd === "pre") {
-      document.execCommand("formatBlock", false, "pre");
-    } else if (cmd === "p") {
-      document.execCommand("formatBlock", false, "p");
-    } else if (cmd === "createLink") {
-      const url = prompt("Enter URL:");
-      if (url) document.execCommand("createLink", false, url);
-    } else if (cmd === "insertImageUrl") {
-      const url = prompt("Image URL:");
-      if (url) document.execCommand("insertImage", false, url);
-    } else {
-      document.execCommand(cmd, false);
-    }
-    onContentInput();
-  };
-
   const save = useCallback(async (newStatus: string) => {
     if (saving) return;
     if (!title.trim()) {
@@ -133,7 +95,7 @@ export function PostEditor({
     const payload = {
       title: title.trim(),
       excerpt: excerpt.trim(),
-      content: editorRef.current?.innerHTML || "",
+      content: !editor || editor.isEmpty ? "" : editor.getHTML(),
       coverImage,
       status: newStatus,
       author: author.trim() === defaultAuthor ? "" : author.trim(),
@@ -189,7 +151,7 @@ export function PostEditor({
     setSlug(saved.slug);
     if (!post) router.replace(`/admin/posts/${saved.id}`);
     router.refresh();
-  }, [saving, title, excerpt, coverImage, author, defaultAuthor, categoryId, slug, publishDate, tagInput, seoTitle, seoDescription, ogImage, post, router, showToast]);
+  }, [saving, title, excerpt, editor, coverImage, author, defaultAuthor, categoryId, slug, publishDate, tagInput, seoTitle, seoDescription, ogImage, post, router, showToast]);
 
   const scheduled = !!publishDate && new Date(publishDate) > new Date();
   const isLiveNow = post?.status === "published" && !!post.publishedAt && new Date(post.publishedAt) <= new Date();
@@ -237,95 +199,7 @@ export function PostEditor({
                 }}
               />
 
-              <div className="editor-toolbar">
-                {TOOLBAR_BUTTONS.map((b) => (
-                  <button key={b.cmd} type="button" className="toolbar-btn" title={b.title} onMouseDown={(e) => { e.preventDefault(); runCmd(b.cmd); }}>
-                    {b.label}
-                  </button>
-                ))}
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Heading 2" onMouseDown={(e) => { e.preventDefault(); runCmd("h2"); }}>
-                  H2
-                </button>
-                <button type="button" className="toolbar-btn" title="Heading 3" onMouseDown={(e) => { e.preventDefault(); runCmd("h3"); }}>
-                  H3
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Bullet List" onMouseDown={(e) => { e.preventDefault(); runCmd("insertUnorderedList"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M4 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM7 4h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2z" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Numbered List" onMouseDown={(e) => { e.preventDefault(); runCmd("insertOrderedList"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M3 4h1v3H3V4zm0 5h1.5l-1.5 2h1.5v1H3v-1l1.5-2H3V9zm1 6H3v-1h2v4H3v-1h1v-2zM7 4h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2z" />
-                  </svg>
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Blockquote" onMouseDown={(e) => { e.preventDefault(); runCmd("blockquote"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M6 3a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3H5a1 1 0 0 0 1 1h1a1 1 0 0 1 0 2H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zm8 0a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3h-1a1 1 0 0 0 1 1h1a1 1 0 0 1 0 2h-1a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Insert Link" onMouseDown={(e) => { e.preventDefault(); runCmd("createLink"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Remove Link" onMouseDown={(e) => { e.preventDefault(); runCmd("unlink"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    <line x1="2" y1="2" x2="18" y2="18" />
-                  </svg>
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Insert image (upload)" onMouseDown={(e) => { e.preventDefault(); imageInputRef.current?.click(); }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="m21 15-5-5L5 21" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Insert image from URL" onMouseDown={(e) => { e.preventDefault(); runCmd("insertImageUrl"); }}>
-                  URL
-                </button>
-                <button type="button" className="toolbar-btn" title="Code block" onMouseDown={(e) => { e.preventDefault(); runCmd("pre"); }}>
-                  {"</>"}
-                </button>
-                <button type="button" className="toolbar-btn" title="Divider" onMouseDown={(e) => { e.preventDefault(); runCmd("insertHorizontalRule"); }}>
-                  —
-                </button>
-                <button type="button" className="toolbar-btn" title="Normal paragraph" onMouseDown={(e) => { e.preventDefault(); runCmd("p"); }}>
-                  ¶
-                </button>
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) insertImage(file);
-                    e.target.value = "";
-                  }}
-                />
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Clear Formatting" onMouseDown={(e) => { e.preventDefault(); runCmd("removeFormat"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M6 4l8 12M4 4h12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div
-                ref={editorRef}
-                className="editor-area"
-                contentEditable
-                onInput={onContentInput}
-                data-placeholder="Start writing your article here…"
-              />
+              <RichTextEditor editor={editor} insertImages={insertImages} onError={(m) => showToast(m, "error")} />
               <div className="editor-statusbar">
                 <span>
                   {words.toLocaleString()} words · {Math.max(1, Math.round(words / 225))} min read

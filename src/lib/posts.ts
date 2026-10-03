@@ -1,5 +1,6 @@
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import { db, posts, postTags, tags, type AdminUser, type Category, type Post, type Tag } from "@/db";
+import { highlightCodeBlocks } from "@/lib/highlight";
 import { readingTime, slugify, summarize } from "@/lib/utils";
 
 /**
@@ -88,6 +89,11 @@ export function withHeadingAnchors(html: string): { html: string; toc: TocItem[]
     return existing ? match : `<h${level}${attrs} id="${id}">${inner}</h${level}>`;
   });
   return { html: out, toc };
+}
+
+/** A post body ready to show: code highlighted and headings linkable. */
+export function renderPostBody(html: string): { html: string; toc: TocItem[] } {
+  return withHeadingAnchors(highlightCodeBlocks(html));
 }
 
 export const ARCHIVE_PAGE_SIZE = 9;
