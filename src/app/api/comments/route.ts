@@ -16,7 +16,11 @@ const MIN_FILL_MS = 3000;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const session = await getCurrentUser();
+  // Only the reply box in Admin → Comments posts as the team. The public form
+  // always goes through the visitor path below, even for a signed-in admin, so
+  // every comment typed on the blog waits for approval.
+  const session = body.asTeam === true ? await getCurrentUser() : null;
+  if (body.asTeam === true && !session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const postId = typeof body.postId === "string" ? body.postId : "";
   const post = postId

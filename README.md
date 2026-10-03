@@ -249,8 +249,10 @@ Comments are stored in your own database; there is no outside service to set up.
 
 - Readers leave a name and comment (email optional, never shown). New comments are
   **pending** until you approve them in **Admin → Comments**, where you can also reply,
-  mark as spam or delete. Replies from anyone signed in post under their own team name
-  with an "Author" badge, appear straight away, and approve the comment they answer.
+  mark as spam or delete. Replies written in **Admin → Comments** post under your own
+  team name with an "Author" badge, appear straight away, and approve the comment they
+  answer. Anything typed into the comment form on the blog itself waits for approval,
+  even if you are signed in to admin in the same browser.
 - Spam protection: a hidden honeypot field, a minimum time to fill in the form, a limit
   of 5 comments per 10 minutes per IP, and comments with more than two links go straight
   to Spam.
