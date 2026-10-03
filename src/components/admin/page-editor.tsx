@@ -7,11 +7,12 @@ import type { Page } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { uploadImage } from "@/lib/image";
 import { slugify } from "@/lib/utils";
+import { ImageUpload } from "./image-upload";
 import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
 
-// The About page is built in: it always lives at /about, shows the author's
-// photo, name and bio from Settings above its content, and is stored in settings.
-type AboutPage = { title: string; content: string };
+// The About page is built in: it always lives at /about and shows the blog
+// author's photo, name and bio above its content. All of it is stored in settings.
+type AboutPage = { title: string; content: string; authorName: string; authorBio: string; authorAvatar: string };
 
 export function PageEditor({ page, about }: { page: Page | null; about?: AboutPage }) {
   const router = useRouter();
@@ -27,6 +28,9 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
   const [slug, setSlug] = useState(about ? "about" : page?.slug || "");
   const [slugEdited, setSlugEdited] = useState(!!page);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [authorName, setAuthorName] = useState(about?.authorName || "");
+  const [authorBio, setAuthorBio] = useState(about?.authorBio || "");
+  const [authorAvatar, setAuthorAvatar] = useState(about?.authorAvatar || "");
 
   const save = async () => {
     if (!title.trim()) { showToast("Please add a title.", "error"); return; }
@@ -36,7 +40,13 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aboutTitle: title.trim(), aboutContent: content }),
+        body: JSON.stringify({
+          aboutTitle: title.trim(),
+          aboutContent: content,
+          authorName: authorName.trim() || "Author",
+          authorBio: authorBio.trim(),
+          authorAvatar,
+        }),
       });
       if (res.ok) {
         showToast("Page saved.");
@@ -94,8 +104,8 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
 
               {about ? (
                 <p className="settings-section-note" style={{ marginTop: 0, marginBottom: 16 }}>
-                  Built-in page at <code>/about</code>. Your photo, name and bio from{" "}
-                  <Link href="/admin/settings">Settings → Author Profile</Link> appear above this content.
+                  Built-in page at <code>/about</code>. The author photo, name and bio from the panel on the
+                  right appear above this content.
                 </p>
               ) : (
               <div className="form-group" style={{ marginBottom: 16 }}>
@@ -137,6 +147,30 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
               )}
             </div>
           </div>
+
+          {about && (
+            <div className="editor-card">
+              <div className="editor-card__header">About the Author</div>
+              <div className="editor-card__body">
+                <div className="form-group">
+                  <label htmlFor="authorName">Name</label>
+                  <input type="text" id="authorName" placeholder="Author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="authorBio">Bio</label>
+                  <textarea id="authorBio" rows={4} placeholder="A short bio shown at the top of this page…" value={authorBio} onChange={(e) => setAuthorBio(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Photo</label>
+                  <ImageUpload value={authorAvatar} onChange={setAuthorAvatar} round onError={(m) => showToast(m, "error")} />
+                  <small className="field-hint">
+                    This is the blog&apos;s main author. The name also shows on posts not credited to a team member. Other writers
+                    set their own name and photo in <Link href="/admin/profile">Your Profile</Link>.
+                  </small>
+                </div>
+              </div>
+            </div>
+          )}
 
           {page && (
             <div className="editor-card">

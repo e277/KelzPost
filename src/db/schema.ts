@@ -27,7 +27,7 @@ const updatedAt = () =>
 
 // People who can sign in to the admin. "admin" can do everything; "author"
 // can only write and manage their own posts. The profile fields are shown on
-// their posts; a blank display name falls back to Settings → Author.
+// their posts; a blank display name falls back to the About page author name.
 export const adminUsers = pgTable(
   "AdminUser",
   {

@@ -70,7 +70,7 @@ export function PostEditor({
   /** Admins can credit a post to anyone on the team. */
   canChooseAuthor: boolean;
   currentUserId: string;
-  /** Settings → Author, shown for posts not credited to a team member. */
+  /** Pages → About author, shown for posts not credited to a team member. */
   siteAuthorName: string;
 }) {
   const router = useRouter();
@@ -410,7 +410,7 @@ export function PostEditor({
                 <div className="form-group">
                   <label htmlFor="postAuthorId">Written by</label>
                   <select id="postAuthorId" value={authorId} onChange={(e) => { setAuthorId(e.target.value); markDirty(); }}>
-                    <option value="">{siteAuthorName} (blog author from Settings)</option>
+                    <option value="">{siteAuthorName} (blog author from Pages → About)</option>
                     {team.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}

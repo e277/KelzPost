@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Category, Settings } from "@/db/schema";
 import { useToast } from "@/components/toast";
-import { ImageUpload } from "./image-upload";
 import { PasswordForm } from "./password-form";
 
 type TagSummary = { id: string; name: string; posts: number };
@@ -25,9 +23,6 @@ export function SettingsForm({
   const [blogTitle, setBlogTitle] = useState(settings.blogTitle);
   const [tagline, setTagline] = useState(settings.tagline);
   const [logoText, setLogoText] = useState(settings.logoText ?? "");
-  const [authorName, setAuthorName] = useState(settings.authorName);
-  const [authorBio, setAuthorBio] = useState(settings.authorBio);
-  const [authorAvatar, setAuthorAvatar] = useState(settings.authorAvatar);
   const [accentColor, setAccentColor] = useState(settings.accentColor);
   const [navyColor, setNavyColor] = useState(settings.navyColor);
   const [socialTwitter, setSocialTwitter] = useState(settings.socialTwitter);
@@ -58,9 +53,6 @@ export function SettingsForm({
         blogTitle: blogTitle.trim() || "The Journal",
         tagline: tagline.trim(),
         logoText: logoText.trim(),
-        authorName: authorName.trim() || "Author",
-        authorBio: authorBio.trim(),
-        authorAvatar,
         accentColor: accentColor.trim() || "#C8922A",
         navyColor: navyColor.trim() || "#0A1F44",
         socialTwitter: socialTwitter.trim(),
@@ -218,33 +210,6 @@ export function SettingsForm({
           </div>
         </div>
 
-        {/* Author */}
-        <div className="editor-card">
-          <div className="editor-card__header">Author Profile</div>
-          <div className="editor-card__body">
-            <div className="form-group">
-              <label htmlFor="authorName">Author Name</label>
-              <input type="text" id="authorName" placeholder="Author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="authorBio">Bio</label>
-              <textarea id="authorBio" rows={3} placeholder="A short bio shown on the About page…" value={authorBio} onChange={(e) => setAuthorBio(e.target.value)} />
-              <small className="field-hint">
-                The blog&apos;s main author, shown on the About page and on posts by admins who haven&apos;t set a display name in{" "}
-                <Link href="/admin/profile">Your Profile</Link>. Other writers manage their own name and bio there.
-              </small>
-            </div>
-          </div>
-        </div>
-
-        {/* Avatar */}
-        <div className="editor-card">
-          <div className="editor-card__header">Author Avatar</div>
-          <div className="editor-card__body">
-            <ImageUpload value={authorAvatar} onChange={setAuthorAvatar} round onError={(m) => showToast(m, "error")} />
-          </div>
-        </div>
-
         {/* Categories */}
         <div className="editor-card settings-grid--full">
           <div className="editor-card__header">Categories</div>
@@ -330,7 +295,7 @@ export function SettingsForm({
               <input
                 type="text"
                 id="footerText"
-                placeholder={`© ${new Date().getFullYear()} ${authorName || "Author"}. All rights reserved.`}
+                placeholder={`© ${new Date().getFullYear()} ${settings.authorName || "Author"}. All rights reserved.`}
                 value={footerText}
                 onChange={(e) => setFooterText(e.target.value)}
               />

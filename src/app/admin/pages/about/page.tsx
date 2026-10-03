@@ -12,7 +12,16 @@ export default async function EditAboutPage() {
 
   return (
     <AdminShell blogTitle={settings.blogTitle} active="pages" title={title}>
-      <PageEditor page={null} about={{ title, content: settings.aboutContent }} />
+      <PageEditor
+        page={null}
+        about={{
+          title,
+          content: settings.aboutContent,
+          authorName: settings.authorName,
+          authorBio: settings.authorBio,
+          authorAvatar: settings.authorAvatar,
+        }}
+      />
     </AdminShell>
   );
 }

@@ -81,7 +81,7 @@ export function ProfileForm({
           />
           {role === "admin" && (
             <small className="field-hint">
-              Leave empty to write as the blog&apos;s author from Settings ({siteAuthorName}), with that bio and photo.
+              Leave empty to write as the blog&apos;s author from Pages → About ({siteAuthorName}), with that bio and photo.
             </small>
           )}
         </div>
