@@ -1801,3 +1801,21 @@ html[data-theme="dark"] .post-body th { background: var(--dk-raised); }
   .dash-stat__value { font-size: 1.5rem; }
   .posts-table--cards .posts-table__actions { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
 }
+
+/* ── Whole-card links ──
+   The title link stretches over its card, so a click anywhere opens it.
+   Other links and buttons inside the card sit above it and keep working. */
+.post-card { position: relative; }
+.post-card__title a::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.post-card__category, .post-card__author a, .post-card__read-more { position: relative; z-index: 2; }
+.post-card__category { position: absolute; }
+.post-card:hover .post-card__title a { color: var(--gold); }
+.post-card:has(.post-card__title a:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
+.post-card__title a:focus-visible { outline: none; }
+html[data-theme="dark"] .post-card:hover .post-card__title a { color: color-mix(in srgb, var(--gold) 45%, #ffffff); }
+
+/* Dashboard: a click anywhere on a post's row or card opens the editor. */
+.posts-table--cards tr { position: relative; }
+.posts-table--cards tbody tr { cursor: pointer; }
+.posts-table--cards .posts-table__title a::after { content: ""; position: absolute; inset: 0; }
+.posts-table--cards .posts-table__actions { position: relative; z-index: 1; }
