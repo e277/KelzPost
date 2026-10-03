@@ -76,13 +76,14 @@ managed from the built-in admin panel. No content is hardcoded.
 - Comments: approve, reply to, mark as spam or delete reader comments (admins only)
 - Newsletter: see subscribers, email a published post to them in one click, remove
   readers, export the list as CSV (admins only)
-- Pages (admins only): edit the built-in About page (always at `/about`, with the
-  author photo, name and bio, edited on the same screen), see the built-in Blog page
-  (always at `/blog`; its filters are your categories), create custom pages, and set the
-  header navigation. A new page gets its header link automatically (untick **Show in
-  navigation** to leave it out), and that link follows the page's title and address and
-  goes away when the page is deleted. Site Navigation reorders the links and adds others,
-  like Home, Blog or another site. New sites start with Home, Blog and About in the menu
+- Pages (admins only): every page in one list: the built-in Home, Blog (always at
+  `/blog`; its filters are your categories) and About (always at `/about`, with the author
+  photo, name and bio, edited on the same screen) pages, plus your custom pages. The
+  header menu is made from these pages: tick **In menu** on a page to show it and use the
+  arrows to order it. A new page goes into the menu when it is created (untick **Show in
+  navigation** in its editor to leave it out), and its link follows the page's title and
+  address and goes away when the page is deleted. The menu only links to the blog's own
+  pages. New sites start with Home, Blog and About in the menu
 - Categories & Tags (admins only): add or remove categories (they become the Blog page's
   filters), and clean up tags you no longer use
 - Configurations (admins only, formerly Settings): how the public site looks: title,

@@ -1,16 +1,18 @@
 /**
- * The header menu, stored as JSON in settings.navLinks. A link to one of the
- * blog's own pages carries that page's id ("about" and "blog" for the built-in pages),
- * so its address and label follow the page and it goes away with the page.
- * Links without a pageId point anywhere else (Home, a category, another site).
+ * The header menu, stored as JSON in settings.navLinks. Every link belongs to one of
+ * the blog's pages and carries that page's id ("home", "blog" and "about" for the
+ * built-in pages), so its address and label follow the page and it goes away with
+ * the page. Pages are put in the menu and ordered from Admin → Pages. Links saved
+ * before that without a pageId are matched to their page by address.
  */
 export type NavLink = { label: string; href: string; pageId?: string };
 
+export const HOME_PAGE_ID = "home";
 export const ABOUT_PAGE_ID = "about";
 export const BLOG_PAGE_ID = "blog";
 
 const DEFAULT_NAV: NavLink[] = [
-  { label: "Home", href: "/" },
+  { label: "Home", href: "/", pageId: HOME_PAGE_ID },
   { label: "Blog", href: "/blog", pageId: BLOG_PAGE_ID },
   { label: "About", href: "/about", pageId: ABOUT_PAGE_ID },
 ];

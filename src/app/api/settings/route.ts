@@ -22,7 +22,6 @@ const FIELDS = [
   "socialInstagram",
   "socialLinkedin",
   "socialGithub",
-  "navLinks",
   "heroTag",
   "heroLayout",
   "footerText",
