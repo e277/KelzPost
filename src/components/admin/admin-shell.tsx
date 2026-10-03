@@ -25,7 +25,7 @@ export function AdminShell({
   children,
 }: {
   blogTitle: string;
-  active: "dashboard" | "editor" | "pages" | "comments" | "settings";
+  active: "dashboard" | "editor" | "pages" | "newsletter" | "settings";
   title: string;
   actions?: ReactNode;
   children: ReactNode;
@@ -63,12 +63,12 @@ export function AdminShell({
             </svg>
             Pages
           </Link>
-          <Link href="/admin/comments" className={active === "comments" ? "active" : ""}>
+          <Link href="/admin/newsletter" className={active === "newsletter" ? "active" : ""}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <polyline points="22 6 12 13 2 6" />
             </svg>
-            Comments
-            <PendingCommentsBadge />
+            Newsletter
           </Link>
           <Link href="/admin/settings" className={active === "settings" ? "active" : ""}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
