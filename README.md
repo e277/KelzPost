@@ -25,7 +25,7 @@ managed from the built-in admin panel. No content is hardcoded.
 - Light and dark mode: follows the reader's device setting, with a toggle in the header
   that remembers their choice (the admin panel always stays light)
 - Custom pages (`/your-page`) and an About page
-- RSS feed (`/feed.xml`), `sitemap.xml`, `robots.txt`, Open Graph/Twitter cards and
+- `sitemap.xml`, `robots.txt`, Open Graph/Twitter cards and
   `BlogPosting` structured data
 - Share images: posts without their own image get a generated preview card with the
   title, author, date and reading time (`/post/<slug>/og`); the site has one too (`/og`)
@@ -237,7 +237,7 @@ Scheduled posts and drafts never appear.
 
 ## Caching
 
-The home page, post pages, custom pages, About page, RSS feed and sitemap are served from
+The home page, post pages, custom pages, About page and sitemap are served from
 Vercel's cache instead of being rebuilt on every visit. Saving, publishing, unpublishing
 or deleting posts, and changing pages, categories, comments or settings, refreshes them
 straight away. They are also rebuilt at most once a minute so scheduled posts appear on
@@ -298,7 +298,6 @@ src/
     search/                   # Search results
     newsletter/               # Newsletter confirm and unsubscribe pages
     og/, post/[slug]/og/      # Generated share images
-    feed.xml/route.ts         # RSS feed
     sitemap.ts, robots.ts     # SEO
     admin/                    # Admin panel (protected by src/proxy.ts)
       login/                  # Login and first-run setup
