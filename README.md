@@ -87,8 +87,10 @@ managed from the built-in admin panel. No content is hardcoded.
   navigation** in its editor to leave it out), and its link follows the page's title and
   address and goes away when the page is deleted. The menu only links to the blog's own
   pages. New sites start with Home, Blog and About in the menu
-- Categories & Tags (admins only): add or remove categories (they become the Blog page's
-  filters), and clean up tags you no longer use
+- Categories & Tags (admins only): add, rename, reorder and delete categories (they
+  become the Blog page's filters, in that order), and add, rename and delete tags. Each
+  shows how many posts use it, and deleting one takes it off those posts without
+  deleting the posts
 - Configurations (admins only, formerly Settings): how the public site looks: title,
   colors, homepage hero and layout, social links and footer. Each person changes their
   own password under **Your Profile**
@@ -256,7 +258,7 @@ Comments are stored in your own database; there is no outside service to set up.
 
 - Readers leave a name and comment (email optional, never shown). New comments are
   **pending** until you approve them in **Admin → Comments**, where you can also reply,
-  mark as spam or delete. Replies written in **Admin → Comments** post under your own
+  edit the text, mark as spam or delete. Replies written in **Admin → Comments** post under your own
   team name with an "Author" badge, appear straight away, and approve the comment they
   answer. Anything typed into the comment form on the blog itself waits for approval,
   even if you are signed in to admin in the same browser.

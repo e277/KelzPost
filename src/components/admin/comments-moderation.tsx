@@ -43,6 +43,8 @@ export function CommentsModeration({
   const [replyId, setReplyId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const tab = TABS.find((t) => t.status === status)!;
 
   const setStatus = async (c: AdminComment, next: CommentStatus, message: string) => {
@@ -63,6 +65,17 @@ export function CommentsModeration({
     setReply("");
     setReplyId(null);
     showToast(c.status === "pending" ? "Reply posted and comment approved." : "Reply posted.");
+    router.refresh();
+  };
+
+  const saveEdit = async (c: AdminComment) => {
+    if (!draft.trim()) return;
+    setBusyId(c.id);
+    const res = await apiSend(`/api/comments/${c.id}`, "PATCH", { content: draft }, "Failed to save the comment.");
+    setBusyId(null);
+    if (!res.ok) return showToast(res.error, "error");
+    setEditId(null);
+    showToast("Comment updated.");
     router.refresh();
   };
 
@@ -118,7 +131,31 @@ export function CommentsModeration({
                     {c.postTitle}
                   </a>
                 </p>
-                <p className="comment-mod__body">{c.content}</p>
+                {editId === c.id ? (
+                  <div className="comment-mod__reply">
+                    <div className="form-group">
+                      <label htmlFor={`edit-${c.id}`}>Edit comment</label>
+                      <textarea
+                        id={`edit-${c.id}`}
+                        rows={4}
+                        value={draft}
+                        maxLength={COMMENT_LIMITS.content}
+                        onChange={(e) => setDraft(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <div className="comment-mod__actions">
+                      <button className="btn btn--primary btn--sm" disabled={busyId === c.id || !draft.trim()} onClick={() => saveEdit(c)}>
+                        Save
+                      </button>
+                      <button className="btn btn--ghost btn--sm" onClick={() => setEditId(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="comment-mod__body">{c.content}</p>
+                )}
 
                 <div className="comment-mod__actions">
                   {c.status !== "approved" && (
@@ -152,6 +189,17 @@ export function CommentsModeration({
                       Spam
                     </button>
                   )}
+                  <button
+                    className="btn btn--ghost btn--sm"
+                    disabled={busyId === c.id}
+                    onClick={() => {
+                      setEditId(c.id);
+                      setDraft(c.content);
+                      setReplyId(null);
+                    }}
+                  >
+                    Edit
+                  </button>
                   <button className="btn btn--danger btn--sm" disabled={busyId === c.id} onClick={() => setPendingDeleteId(c.id)}>
                     Delete
                   </button>
