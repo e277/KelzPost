@@ -15,6 +15,13 @@
       "when": 1791038418145,
       "tag": "0001_tags_seo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791039745371,
+      "tag": "0002_post_author_follows_settings",
+      "breakpoints": true
     }
   ]
 }
