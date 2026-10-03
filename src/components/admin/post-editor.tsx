@@ -48,7 +48,8 @@ export function PostEditor({
 
   const [title, setTitle] = useState(post?.title || "");
   const [status, setStatus] = useState(post?.status || "draft");
-  const [author, setAuthor] = useState(post?.author || defaultAuthor);
+  // Empty means "the blog's author from Settings", so renaming the author there updates every such post.
+  const [author, setAuthor] = useState(post?.author && post.author !== defaultAuthor ? post.author : "");
   const [categoryId, setCategoryId] = useState(post?.categoryId || "");
   const [excerpt, setExcerpt] = useState(post?.excerpt || "");
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
@@ -135,7 +136,7 @@ export function PostEditor({
       content: editorRef.current?.innerHTML || "",
       coverImage,
       status: newStatus,
-      author: author.trim() || defaultAuthor,
+      author: author.trim() === defaultAuthor ? "" : author.trim(),
       categoryId: categoryId || null,
       slug: slug || slugify(title),
       publishedAt: publishDate ? new Date(publishDate).toISOString() : "",
@@ -380,7 +381,8 @@ export function PostEditor({
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label htmlFor="postAuthor">Author</label>
-                <input type="text" id="postAuthor" placeholder="Author name" value={author} onChange={(e) => { setAuthor(e.target.value); markDirty(); }} />
+                <input type="text" id="postAuthor" placeholder={defaultAuthor || "Author name"} value={author} onChange={(e) => { setAuthor(e.target.value); markDirty(); }} />
+                <small className="field-hint">Leave empty to use the author name from Settings ({defaultAuthor || "not set"}). Fill in only for guest authors.</small>
               </div>
             </div>
           </div>
