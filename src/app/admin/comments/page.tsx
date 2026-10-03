@@ -1,6 +1,5 @@
 import { desc, eq } from "drizzle-orm";
 import { comments, db, posts } from "@/db";
-import { getSettings } from "@/lib/site";
 import { formatDate } from "@/lib/utils";
 import { COMMENT_STATUSES, isCommentStatus } from "@/lib/comments";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -14,8 +13,7 @@ export default async function AdminCommentsPage({ searchParams }: { searchParams
   const { status: requested } = await searchParams;
   const status = isCommentStatus(requested) ? requested : "pending";
 
-  const [settings, counts, rows] = await Promise.all([
-    getSettings(),
+  const [counts, rows] = await Promise.all([
     Promise.all(COMMENT_STATUSES.map((s) => db.$count(comments, eq(comments.status, s)))),
     db
       .select({ comment: comments, postTitle: posts.title, postSlug: posts.slug })
@@ -50,7 +48,7 @@ export default async function AdminCommentsPage({ searchParams }: { searchParams
   }));
 
   return (
-    <AdminShell blogTitle={settings.blogTitle} active="comments" title="Comments">
+    <AdminShell active="comments" title="Comments">
       <CommentsModeration
         status={status}
         counts={Object.fromEntries(COMMENT_STATUSES.map((s, i) => [s, counts[i]])) as Record<(typeof COMMENT_STATUSES)[number], number>}

@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, categories, posts as postsTable } from "@/db";
 import { isAdmin, requirePageUser } from "@/lib/current-user";
-import { getSettings } from "@/lib/site";
 import { getReadershipStats } from "@/lib/stats";
 import { wordCount } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -16,8 +15,7 @@ export default async function AdminDashboardPage() {
   const user = await requirePageUser();
   // Authors see, and get stats for, only their own posts.
   const ownOnly = !isAdmin(user);
-  const [settings, allPosts, categoryCount, stats] = await Promise.all([
-    getSettings(),
+  const [allPosts, categoryCount, stats] = await Promise.all([
     db.query.posts.findMany({
       where: ownOnly ? eq(postsTable.authorId, user.id) : undefined,
       with: { category: true },
@@ -53,7 +51,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <AdminShell
-      blogTitle={settings.blogTitle}
+     
       active="dashboard"
       title="Dashboard"
       actions={

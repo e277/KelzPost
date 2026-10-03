@@ -30,7 +30,7 @@ export default async function AdminTeamPage() {
   }));
 
   return (
-    <AdminShell blogTitle={settings.blogTitle} active="team" title="Team">
+    <AdminShell active="team" title="Team">
       <TeamManager team={team} />
     </AdminShell>
   );

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
+import { apiSend } from "@/lib/admin-api";
+import { AdminCard } from "./ui";
 
 type NavLink = { label: string; href: string };
 
@@ -50,19 +52,12 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
 
   const save = async () => {
     setSaving(true);
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ navLinks: JSON.stringify(navLinks) }),
-    });
+    const res = await apiSend("/api/settings", "PUT", { navLinks: JSON.stringify(navLinks) }, "Failed to save navigation.");
     setSaving(false);
-    if (res.ok) {
-      setDirty(false);
-      showToast("Navigation saved.");
-      router.refresh();
-    } else {
-      showToast("Failed to save navigation.", "error");
-    }
+    if (!res.ok) return showToast(res.error, "error");
+    setDirty(false);
+    showToast("Navigation saved.");
+    router.refresh();
   };
 
   // Pages (and Home) that aren't in the menu yet, for one-click adding.
@@ -70,15 +65,14 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
   const suggestions = [{ label: "Home", href: "/" }, ...pages].filter((p) => !linked.has(p.href));
 
   return (
-    <section className="editor-card nav-editor">
-      <div className="editor-card__header">Site Navigation</div>
-      <div className="editor-card__body">
+    <>
+      <AdminCard title="Site Navigation" className="nav-editor">
         <p className="settings-section-note">
           The links in your blog&apos;s header, in this order. Visitors reach /admin directly; there is no admin link on the public site.
         </p>
         <div className="nav-links-list">
           {navLinks.length === 0 && (
-            <p className="settings-section-note" style={{ margin: 0 }}>No links yet. Add one below.</p>
+            <p className="settings-section-note settings-section-note--flush">No links yet. Add one below.</p>
           )}
           {navLinks.map((link, i) => (
             <div className="nav-link-row" key={i}>
@@ -121,14 +115,14 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
           />
           <button type="button" className="btn btn--ghost btn--sm" onClick={addTyped}>Add</button>
         </div>
-        <div className="nav-editor__save">
+        <div className="admin-save-bar">
           <button type="button" className="btn btn--primary btn--sm" disabled={saving || !dirty} onClick={save}>
             {saving ? "Saving…" : "Save Navigation"}
           </button>
           {dirty && <span className="field-hint">Unsaved changes</span>}
         </div>
-      </div>
+      </AdminCard>
       {toastElement}
-    </section>
+    </>
   );
 }

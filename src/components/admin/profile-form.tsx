@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
+import { apiSend } from "@/lib/admin-api";
 import { ImageUpload } from "./image-upload";
+import { AdminCard, Field, FormError } from "./ui";
 
 /** The signed-in team member's public author profile. */
 export function ProfileForm({
@@ -37,27 +39,17 @@ export function ProfileForm({
     e.preventDefault();
     setError("");
     setSaving(true);
-    const res = await fetch("/api/profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, bio, avatar }),
-    }).catch(() => null);
+    const res = await apiSend<{ slug: string | null }>("/api/profile", "PUT", { displayName, bio, avatar }, "Could not save your profile.");
     setSaving(false);
-    if (!res?.ok) {
-      const data = res ? await res.json().catch(() => ({})) : {};
-      setError(data.error || "Could not save your profile.");
-      return;
-    }
-    const saved = await res.json();
-    setSlug(saved.slug);
+    if (!res.ok) return setError(res.error);
+    setSlug(res.data.slug);
     showToast("Profile saved.");
     router.refresh();
   };
 
   return (
-    <form className="editor-card" onSubmit={save}>
-      <div className="editor-card__header">Author profile</div>
-      <div className="editor-card__body">
+    <>
+      <AdminCard title="Author profile" onSubmit={save}>
         <p className="profile-meta">
           Signed in as <strong>{username}</strong> · {role === "admin" ? "Admin" : "Author"}
           {slug && displayName.trim() && (
@@ -69,8 +61,15 @@ export function ProfileForm({
             </>
           )}
         </p>
-        <div className="form-group">
-          <label htmlFor="profileName">Name shown on your posts</label>
+        <Field
+          label="Name shown on your posts"
+          htmlFor="profileName"
+          hint={
+            role === "admin"
+              ? <>Leave empty to write as the blog&apos;s author from Pages → About ({siteAuthorName}), with that bio and photo.</>
+              : undefined
+          }
+        >
           <input
             id="profileName"
             value={displayName}
@@ -79,27 +78,19 @@ export function ProfileForm({
             placeholder={role === "admin" ? siteAuthorName : "Your name"}
             onChange={(e) => setDisplayName(e.target.value)}
           />
-          {role === "admin" && (
-            <small className="field-hint">
-              Leave empty to write as the blog&apos;s author from Pages → About ({siteAuthorName}), with that bio and photo.
-            </small>
-          )}
-        </div>
-        <div className="form-group">
-          <label htmlFor="profileBio">Short bio</label>
+        </Field>
+        <Field label="Short bio" htmlFor="profileBio" hint={`${bio.length}/600`}>
           <textarea id="profileBio" rows={4} maxLength={600} value={bio} placeholder="A sentence or two shown under your posts and on your author page." onChange={(e) => setBio(e.target.value)} />
-          <small className="field-hint">{bio.length}/600</small>
-        </div>
-        <div className="form-group">
-          <label>Photo</label>
+        </Field>
+        <Field label="Photo">
           <ImageUpload value={avatar} onChange={setAvatar} round onError={(m) => showToast(m, "error")} />
-        </div>
-        <p className={`form-error${error ? " visible" : ""}`}>{error}</p>
+        </Field>
+        <FormError message={error} />
         <button type="submit" className="btn btn--primary btn--sm" disabled={saving}>
           {saving ? "Saving…" : "Save profile"}
         </button>
-      </div>
+      </AdminCard>
       {toastElement}
-    </form>
+    </>
   );
 }

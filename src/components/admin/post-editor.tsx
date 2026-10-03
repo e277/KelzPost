@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import type { Editor } from "@tiptap/react";
 import type { Category, Post } from "@/db/schema";
 import { useToast } from "@/components/toast";
+import { apiSend } from "@/lib/admin-api";
 import { slugify, wordCount } from "@/lib/utils";
 import { uploadImage } from "@/lib/image";
 import { ImageUpload } from "./image-upload";
 import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
 import { RevisionHistory, type Revision } from "./revision-history";
+import { AdminCard, ConfirmDialog } from "./ui";
 
 type PostWithCategory = Post & { category: Category | null };
 /** A team member the post can be credited to, with the name their posts show. */
@@ -295,14 +297,11 @@ export function PostEditor({
 
   const handleDelete = async () => {
     if (!postId) return;
-    const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
-    if (res.ok) {
-      setDirty(false);
-      clearBackups(postId);
-      router.push("/admin");
-    } else {
-      showToast("Failed to delete post.", "error");
-    }
+    const res = await apiSend(`/api/posts/${postId}`, "DELETE", undefined, "Failed to delete post.");
+    if (!res.ok) return showToast(res.error, "error");
+    setDirty(false);
+    clearBackups(postId);
+    router.push("/admin");
   };
 
   return (
@@ -338,8 +337,7 @@ export function PostEditor({
       )}
       <div className="editor-layout">
         <div>
-          <div className="editor-card" style={{ marginBottom: 20 }}>
-            <div className="editor-card__body">
+          <AdminCard className="editor-card--main">
               <input
                 type="text"
                 className="editor-title"
@@ -359,19 +357,16 @@ export function PostEditor({
                 </span>
                 <span aria-live="polite">{saveState}{saveState ? " · " : ""}Ctrl/⌘+S to save</span>
               </div>
-            </div>
-          </div>
+          </AdminCard>
         </div>
 
         <div className="sidebar-panel">
-          <div className="editor-card">
-            <div className="editor-card__header">Post Status</div>
-            <div className="editor-card__body">
-              <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
-                <button type="button" className="btn btn--ghost btn--sm" style={{ flex: 1 }} disabled={saving} onClick={() => save("draft")}>
+          <AdminCard title="Post Status">
+              <div className="editor-actions">
+                <button type="button" className="btn btn--ghost btn--sm" disabled={saving} onClick={() => save("draft")}>
                   {status === "published" ? "Unpublish" : "Save Draft"}
                 </button>
-                <button type="button" className="btn btn--primary btn--sm" style={{ flex: 1 }} disabled={saving} onClick={() => save("published")}>
+                <button type="button" className="btn btn--primary btn--sm" disabled={saving} onClick={() => save("published")}>
                   {scheduled ? (status === "published" ? "Update Schedule" : "Schedule") : status === "published" ? "Update" : "Publish"}
                 </button>
               </div>
@@ -379,8 +374,7 @@ export function PostEditor({
                 <Link
                   href={isLiveNow ? `/post/${slug}` : `/admin/posts/${postId}/preview`}
                   target="_blank"
-                  className="btn btn--ghost btn--sm btn--full"
-                  style={{ marginBottom: 18, justifyContent: "center" }}
+                  className="btn btn--ghost btn--sm btn--full editor-view-link"
                 >
                   {isLiveNow ? "View live post ↗" : "Preview post ↗"}
                 </Link>
@@ -419,17 +413,14 @@ export function PostEditor({
                   </select>
                 </div>
               )}
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group">
                 <label htmlFor="postAuthor">Guest author</label>
                 <input type="text" id="postAuthor" placeholder={creditedName || "Author name"} value={author} onChange={(e) => { setAuthor(e.target.value); markDirty(); }} />
                 <small className="field-hint">Leave empty to show {creditedName || "the author"}. Fill in only for a guest writer.</small>
               </div>
-            </div>
-          </div>
+          </AdminCard>
 
-          <div className="editor-card">
-            <div className="editor-card__header">Details</div>
-            <div className="editor-card__body">
+          <AdminCard title="Details">
               <div className="form-group">
                 <label htmlFor="postCategory">Category</label>
                 <select id="postCategory" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); markDirty(); }}>
@@ -471,7 +462,7 @@ export function PostEditor({
                 />
                 <small className="field-hint">/post/{slug || "…"}</small>
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group">
                 <label htmlFor="postExcerpt">Excerpt</label>
                 <textarea
                   id="postExcerpt"
@@ -483,19 +474,13 @@ export function PostEditor({
                 />
                 <small className="field-hint">{excerpt.length}/300 — used in listings, search results and link previews.</small>
               </div>
-            </div>
-          </div>
+          </AdminCard>
 
-          <div className="editor-card">
-            <div className="editor-card__header">Cover Image</div>
-            <div className="editor-card__body">
+          <AdminCard title="Cover Image">
               <ImageUpload value={coverImage} onChange={(v) => { setCoverImage(v); markDirty(); }} onError={(m) => showToast(m, "error")} />
-            </div>
-          </div>
+          </AdminCard>
 
-          <div className="editor-card">
-            <div className="editor-card__header">Search &amp; Social</div>
-            <div className="editor-card__body">
+          <AdminCard title="Search & Social">
               <div className="seo-preview" aria-label="Search result preview">
                 <div className="seo-preview__url">/post/{slug || "…"}</div>
                 <div className="seo-preview__title">{metaTitle}</div>
@@ -525,7 +510,7 @@ export function PostEditor({
                 />
                 <small className="field-hint">{seoDescription.length}/160 recommended.</small>
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group">
                 <label htmlFor="postOgImage">Social share image URL</label>
                 <input
                   type="url"
@@ -536,42 +521,25 @@ export function PostEditor({
                 />
                 <small className="field-hint">Optional. Without one, a branded share image is generated from the title.</small>
               </div>
-            </div>
-          </div>
+          </AdminCard>
 
           {postId && (
             <RevisionHistory postId={postId} onRestore={restoreRevision} onError={(m) => showToast(m, "error")} />
           )}
 
           {postId && (
-            <div className="editor-card">
-              <div className="editor-card__header" style={{ color: "var(--red)" }}>
-                Danger Zone
-              </div>
-              <div className="editor-card__body">
-                <button type="button" className="btn btn--danger btn--sm btn--full" onClick={() => setShowDeleteModal(true)}>
-                  Delete This Post
-                </button>
-              </div>
-            </div>
+            <AdminCard title="Danger Zone" danger>
+              <button type="button" className="btn btn--danger btn--sm btn--full" onClick={() => setShowDeleteModal(true)}>
+                Delete This Post
+              </button>
+            </AdminCard>
           )}
         </div>
       </div>
 
-      <div className={`modal-overlay${showDeleteModal ? " open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}>
-        <div className="modal">
-          <h2 className="modal__title">Delete Post?</h2>
-          <p className="modal__body">This will permanently delete this post. This cannot be undone.</p>
-          <div className="modal__actions">
-            <button className="btn btn--ghost" onClick={() => setShowDeleteModal(false)}>
-              Cancel
-            </button>
-            <button className="btn btn--danger" onClick={handleDelete}>
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmDialog open={showDeleteModal} title="Delete Post?" onConfirm={handleDelete} onCancel={() => setShowDeleteModal(false)}>
+        This will permanently delete this post. This cannot be undone.
+      </ConfirmDialog>
 
       {toastElement}
     </>

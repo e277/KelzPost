@@ -6,6 +6,8 @@ import { useState } from "react";
 import type { Post, Subscriber } from "@/db/schema";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/toast";
+import { apiSend } from "@/lib/admin-api";
+import { ConfirmDialog } from "./ui";
 
 type SubscriberRow = Omit<Subscriber, "token">;
 type PostRow = Pick<Post, "id" | "title" | "slug" | "publishedAt" | "newsletterSentAt">;
@@ -54,45 +56,27 @@ export function NewsletterManager({
   const handleSend = async () => {
     if (!pendingSend) return;
     setSending(true);
-    const res = await fetch("/api/newsletter/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId: pendingSend.id }),
-    }).catch(() => null);
-    const data = await res?.json().catch(() => ({}));
+    const res = await apiSend<{ sent: number; failed: number }>("/api/newsletter/send", "POST", { postId: pendingSend.id }, "Failed to send the newsletter.");
     setSending(false);
     setPendingSend(null);
-    if (res?.ok) {
-      showToast(
-        data.failed
-          ? `Sent to ${data.sent} subscriber${data.sent === 1 ? "" : "s"}; ${data.failed} failed.`
-          : `Sent to ${data.sent} subscriber${data.sent === 1 ? "" : "s"}.`,
-        data.failed ? "error" : "success"
-      );
-      router.refresh();
-    } else {
-      showToast(data?.error || "Failed to send the newsletter.", "error");
-    }
+    if (!res.ok) return showToast(res.error, "error");
+    const { sent, failed } = res.data;
+    showToast(
+      failed
+        ? `Sent to ${sent} subscriber${sent === 1 ? "" : "s"}; ${failed} failed.`
+        : `Sent to ${sent} subscriber${sent === 1 ? "" : "s"}.`,
+      failed ? "error" : "success"
+    );
+    router.refresh();
   };
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
-    const res = await fetch(`/api/subscribers/${pendingDelete.id}`, { method: "DELETE" });
+    const res = await apiSend(`/api/subscribers/${pendingDelete.id}`, "DELETE", undefined, "Failed to remove subscriber.");
     setPendingDelete(null);
-    if (res.ok) {
-      showToast("Subscriber removed.");
-      router.refresh();
-    } else {
-      showToast("Failed to remove subscriber.", "error");
-    }
-  };
-
-  const controlStyle = {
-    padding: "7px 12px",
-    border: "1.5px solid var(--gray-200)",
-    borderRadius: "var(--radius-sm)",
-    fontFamily: "var(--font-body)",
-    fontSize: ".85rem",
+    if (!res.ok) return showToast(res.error, "error");
+    showToast("Subscriber removed.");
+    router.refresh();
   };
 
   return (
@@ -162,7 +146,7 @@ export function NewsletterManager({
                         </Link>
                       </div>
                     </td>
-                    <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }}>{formatDate(post.publishedAt)}</td>
+                    <td className="posts-table__date">{formatDate(post.publishedAt)}</td>
                     <td>
                       {post.newsletterSentAt ? (
                         <span className="badge badge--green" title={new Date(post.newsletterSentAt).toLocaleString()}>
@@ -217,13 +201,13 @@ export function NewsletterManager({
               placeholder="Search emails…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={controlStyle}
+              className="dash-control"
               aria-label="Search subscribers"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              style={controlStyle}
+              className="dash-control"
               aria-label="Filter by status"
             >
               <option value="all">All Status</option>
@@ -252,11 +236,11 @@ export function NewsletterManager({
               <tbody>
                 {filtered.map((s) => (
                   <tr key={s.id}>
-                    <td style={{ overflowWrap: "anywhere" }}>{s.email}</td>
+                    <td className="posts-table__wrap">{s.email}</td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[s.status] || "badge--gray"}`}>{STATUS_LABEL[s.status] || s.status}</span>
                     </td>
-                    <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }}>{formatDate(s.createdAt)}</td>
+                    <td className="posts-table__date">{formatDate(s.createdAt)}</td>
                     <td>
                       <div className="posts-table__actions">
                         <button className="btn btn--danger btn--sm" onClick={() => setPendingDelete(s)}>
@@ -272,50 +256,23 @@ export function NewsletterManager({
         )}
       </div>
 
-      <div
-        className={`modal-overlay${pendingSend ? " open" : ""}`}
-        onClick={(e) => {
-          if (e.target === e.currentTarget && !sending) setPendingSend(null);
-        }}
+      <ConfirmDialog
+        open={!!pendingSend}
+        title="Send to subscribers?"
+        confirmLabel="Send"
+        tone="primary"
+        busy={sending}
+        busyLabel="Sending…"
+        onConfirm={handleSend}
+        onCancel={() => setPendingSend(null)}
       >
-        <div className="modal" role="dialog" aria-modal="true">
-          <h2 className="modal__title">Send to subscribers?</h2>
-          <p className="modal__body">
-            {pendingSend ? <>“{pendingSend.title}” will be emailed to </> : null}
-            {counts.active} subscriber{counts.active === 1 ? "" : "s"}. Each post can only be sent once.
-          </p>
-          <div className="modal__actions">
-            <button className="btn btn--ghost" disabled={sending} onClick={() => setPendingSend(null)}>
-              Cancel
-            </button>
-            <button className="btn btn--primary" disabled={sending} onClick={handleSend}>
-              {sending ? "Sending…" : "Send"}
-            </button>
-          </div>
-        </div>
-      </div>
+        {pendingSend ? <>“{pendingSend.title}” will be emailed to </> : null}
+        {counts.active} subscriber{counts.active === 1 ? "" : "s"}. Each post can only be sent once.
+      </ConfirmDialog>
 
-      <div
-        className={`modal-overlay${pendingDelete ? " open" : ""}`}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setPendingDelete(null);
-        }}
-      >
-        <div className="modal" role="dialog" aria-modal="true">
-          <h2 className="modal__title">Remove subscriber?</h2>
-          <p className="modal__body">
-            {pendingDelete ? <>{pendingDelete.email} will be removed from your list. </> : null}They can sign up again later.
-          </p>
-          <div className="modal__actions">
-            <button className="btn btn--ghost" onClick={() => setPendingDelete(null)}>
-              Cancel
-            </button>
-            <button className="btn btn--danger" onClick={handleDelete}>
-              Remove
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmDialog open={!!pendingDelete} title="Remove subscriber?" confirmLabel="Remove" onConfirm={handleDelete} onCancel={() => setPendingDelete(null)}>
+        {pendingDelete ? <>{pendingDelete.email} will be removed from your list. </> : null}They can sign up again later.
+      </ConfirmDialog>
 
       {toastElement}
     </>

@@ -4,7 +4,7 @@ import { slugify } from "@/lib/utils";
 
 /**
  * The name a team member's posts show. Admins without a display name write as
- * the blog's author from Settings (so a one-person blog works as before).
+ * the blog's author from Pages → About (so a one-person blog works as before).
  */
 export const memberName = (user: Pick<AdminUser, "displayName" | "username" | "role">, siteAuthorName: string) =>
   user.displayName.trim() || (user.role === "admin" ? siteAuthorName : user.username);

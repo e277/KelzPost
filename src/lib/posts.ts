@@ -111,7 +111,7 @@ type BylineUser = Pick<AdminUser, "displayName" | "slug"> | null | undefined;
 
 /**
  * A guest author typed on the post wins; then the team member who wrote it,
- * if they've set a display name; then the blog's author from Settings.
+ * if they've set a display name; then the blog's author from Pages → About.
  */
 export function postByline(post: { author: string; authorUser?: BylineUser }, defaultName: string): Byline {
   const guest = post.author.trim();
