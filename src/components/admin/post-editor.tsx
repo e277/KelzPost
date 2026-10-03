@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Category, Post } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { slugify, wordCount } from "@/lib/utils";
-import { prepareImage } from "@/lib/image";
+import { uploadImage } from "@/lib/image";
 import { ImageUpload } from "./image-upload";
 
 type PostWithCategory = Post & { category: Category | null };
@@ -91,7 +91,7 @@ export function PostEditor({
 
   const insertImage = async (file: File) => {
     try {
-      const src = await prepareImage(file);
+      const src = await uploadImage(file);
       editorRef.current?.focus();
       document.execCommand("insertImage", false, src);
       onContentInput();

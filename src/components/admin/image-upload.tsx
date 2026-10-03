@@ -1,7 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { prepareImage } from "@/lib/image";
+import { uploadImage } from "@/lib/image";
+
+// Images uploaded from this form, as opposed to a URL typed in by hand.
+const isUploaded = (value: string) => value.startsWith("data:") || /\.blob\.vercel-storage\.com\//.test(value);
 
 export function ImageUpload({
   value,
@@ -16,13 +19,19 @@ export function ImageUpload({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [showUrlField, setShowUrlField] = useState(Boolean(value) && !value.startsWith("data:"));
+  const [uploading, setUploading] = useState(false);
+  const [showUrlField, setShowUrlField] = useState(Boolean(value) && !isUploaded(value));
 
   const handleFile = async (file: File) => {
+    if (uploading) return;
+    setUploading(true);
     try {
-      onChange(await prepareImage(file, round ? 512 : 1600));
+      onChange(await uploadImage(file, round ? 512 : 1600));
     } catch (e) {
       onError?.(e instanceof Error ? e.message : "Could not process that image.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -36,6 +45,7 @@ export function ImageUpload({
       {!value && (
         <div
           className={`upload-zone${dragOver ? " drag-over" : ""}`}
+          aria-busy={uploading}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={(e) => {
@@ -49,6 +59,7 @@ export function ImageUpload({
             ref={fileRef}
             type="file"
             accept="image/*"
+            disabled={uploading}
             onChange={(e) => {
               if (e.target.files?.[0]) handleFile(e.target.files[0]);
             }}
@@ -58,11 +69,17 @@ export function ImageUpload({
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />
           </svg>
-          <p>
-            <strong>Click to upload</strong> or drag &amp; drop
-            <br />
-            PNG, JPG, WEBP, GIF — large photos are resized automatically
-          </p>
+          {uploading ? (
+            <p>
+              <strong>Uploading…</strong>
+            </p>
+          ) : (
+            <p>
+              <strong>Click to upload</strong> or drag &amp; drop
+              <br />
+              PNG, JPG, WEBP, GIF — large photos are resized automatically
+            </p>
+          )}
         </div>
       )}
 
@@ -82,7 +99,7 @@ export function ImageUpload({
         <input
           type="url"
           placeholder="https://…"
-          value={value && !value.startsWith("data:") ? value : ""}
+          value={value && !isUploaded(value) ? value : ""}
           onChange={(e) => onChange(e.target.value.trim())}
         />
       </div>
