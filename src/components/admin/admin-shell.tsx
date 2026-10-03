@@ -1,6 +1,21 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { cache, type ReactNode } from "react";
+import { eq } from "drizzle-orm";
+import { comments, db } from "@/db";
 import { LogoutButton } from "./logout-button";
+
+// Shared by the sidebar and the mobile bar, so the count is queried once per request.
+const pendingCommentCount = cache(() => db.$count(comments, eq(comments.status, "pending")));
+
+async function PendingCommentsBadge() {
+  const count = await pendingCommentCount().catch(() => 0);
+  if (!count) return null;
+  return (
+    <span className="admin-nav-count" aria-label={`${count} waiting for approval`}>
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 export function AdminShell({
   blogTitle,

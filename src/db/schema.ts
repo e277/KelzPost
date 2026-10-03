@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { foreignKey, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 const id = () =>
   text("id")
@@ -158,6 +158,11 @@ export const loginAttempts = pgTable("LoginAttempt", {
 export const postsRelations = relations(posts, ({ one, many }) => ({
   category: one(categories, { fields: [posts.categoryId], references: [categories.id] }),
   postTags: many(postTags),
+  comments: many(comments),
+}));
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  post: one(posts, { fields: [comments.postId], references: [posts.id] }),
 }));
 
 export const tagsRelations = relations(tags, ({ many }) => ({
