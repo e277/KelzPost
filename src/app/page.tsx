@@ -1,9 +1,11 @@
 import { db } from "@/db";
 import { livePosts } from "@/lib/posts";
 import { getSettings } from "@/lib/site";
+import { isMailerConfigured } from "@/lib/mailer";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { HomeContent } from "@/components/home-content";
+import { NewsletterSignup } from "@/components/newsletter-signup";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,12 @@ export default async function HomePage() {
       </section>
 
       <HomeContent posts={posts} categories={categories} settings={settings} />
+
+      {isMailerConfigured() && (
+        <div className="newsletter-band">
+          <NewsletterSignup blogTitle={settings.blogTitle} />
+        </div>
+      )}
 
       <SiteFooter settings={settings} />
     </>

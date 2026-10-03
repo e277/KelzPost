@@ -1,0 +1,51 @@
+import { desc } from "drizzle-orm";
+import { db, subscribers } from "@/db";
+import { missingMailerSettings } from "@/lib/mailer";
+import { livePosts } from "@/lib/posts";
+import { getSettings } from "@/lib/site";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { NewsletterManager } from "@/components/admin/newsletter-manager";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminNewsletterPage() {
+  const [settings, subscriberRows, recentPosts] = await Promise.all([
+    getSettings(),
+    db
+      .select({
+        id: subscribers.id,
+        email: subscribers.email,
+        status: subscribers.status,
+        createdAt: subscribers.createdAt,
+        confirmedAt: subscribers.confirmedAt,
+      })
+      .from(subscribers).orderBy(desc(subscribers.createdAt)),
+    db.query.posts.findMany({
+      where: livePosts(),
+      columns: { id: true, title: true, slug: true, publishedAt: true, newsletterSentAt: true },
+      orderBy: (p, { desc }) => [desc(p.publishedAt)],
+      limit: 15,
+    }),
+  ]);
+
+  return (
+    <AdminShell
+      blogTitle={settings.blogTitle}
+      active="newsletter"
+      title="Newsletter"
+      actions={
+        subscriberRows.length > 0 ? (
+          <a href="/admin/newsletter/export" className="btn btn--ghost btn--sm" download>
+            Export CSV
+          </a>
+        ) : null
+      }
+    >
+      <NewsletterManager
+        subscribers={subscriberRows}
+        posts={recentPosts}
+        missingSettings={missingMailerSettings()}
+      />
+    </AdminShell>
+  );
+}

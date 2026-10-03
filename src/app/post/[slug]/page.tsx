@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
+import { isMailerConfigured } from "@/lib/mailer";
 import { summarize, readingTime } from "@/lib/utils";
 import { getPostTags, isLive, livePosts, withHeadingAnchors } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
@@ -12,6 +13,7 @@ import { PostCard } from "@/components/post-card";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
 import { AuthorBox } from "@/components/author-box";
+import { NewsletterSignup } from "@/components/newsletter-signup";
 
 async function getPublishedPost(slug: string) {
   const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
@@ -125,6 +127,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           <PostArticle post={post} categories={categories} authorName={settings.authorName} tags={tags} bodyHtml={html} toc={toc} />
 
           <AuthorBox settings={settings} name={post.author || settings.authorName} />
+
+          {isMailerConfigured() && <NewsletterSignup blogTitle={settings.blogTitle} />}
 
           <footer className="post-footer">
             <Link href="/" className="post-footer__back">
