@@ -1,22 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Category, Settings } from "@/db/schema";
 import { useToast } from "@/components/toast";
-import { ImageUpload } from "./image-upload";
 import { PasswordForm } from "./password-form";
-
-type NavLink = { label: string; href: string };
-
-function parseNavLinks(raw: string): NavLink[] {
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.filter((l) => l.label && l.href);
-  } catch {}
-  return [{ label: "Home", href: "/" }, { label: "About", href: "/about" }];
-}
 
 type TagSummary = { id: string; name: string; posts: number };
 
@@ -35,20 +23,12 @@ export function SettingsForm({
   const [blogTitle, setBlogTitle] = useState(settings.blogTitle);
   const [tagline, setTagline] = useState(settings.tagline);
   const [logoText, setLogoText] = useState(settings.logoText ?? "");
-  const [authorName, setAuthorName] = useState(settings.authorName);
-  const [authorBio, setAuthorBio] = useState(settings.authorBio);
-  const [authorAvatar, setAuthorAvatar] = useState(settings.authorAvatar);
   const [accentColor, setAccentColor] = useState(settings.accentColor);
   const [navyColor, setNavyColor] = useState(settings.navyColor);
   const [socialTwitter, setSocialTwitter] = useState(settings.socialTwitter);
   const [socialInstagram, setSocialInstagram] = useState(settings.socialInstagram);
   const [socialLinkedin, setSocialLinkedin] = useState(settings.socialLinkedin);
   const [socialGithub, setSocialGithub] = useState(settings.socialGithub);
-
-  // Navigation
-  const [navLinks, setNavLinks] = useState<NavLink[]>(parseNavLinks(settings.navLinks));
-  const [newNavLabel, setNewNavLabel] = useState("");
-  const [newNavHref, setNewNavHref] = useState("");
 
   // Hero
   const [heroTag, setHeroTag] = useState(settings.heroTag ?? "Personal Blog");
@@ -73,16 +53,12 @@ export function SettingsForm({
         blogTitle: blogTitle.trim() || "The Journal",
         tagline: tagline.trim(),
         logoText: logoText.trim(),
-        authorName: authorName.trim() || "Author",
-        authorBio: authorBio.trim(),
-        authorAvatar,
         accentColor: accentColor.trim() || "#C8922A",
         navyColor: navyColor.trim() || "#0A1F44",
         socialTwitter: socialTwitter.trim(),
         socialInstagram: socialInstagram.trim(),
         socialLinkedin: socialLinkedin.trim(),
         socialGithub: socialGithub.trim(),
-        navLinks: JSON.stringify(navLinks),
         heroTag: heroTag.trim(),
         heroLayout,
         postsLayout,
@@ -96,28 +72,6 @@ export function SettingsForm({
     } else {
       showToast("Failed to save settings.", "error");
     }
-  };
-
-  // Nav link helpers
-  const addNavLink = () => {
-    const label = newNavLabel.trim();
-    const href = newNavHref.trim();
-    if (!label || !href) return;
-    setNavLinks((prev) => [...prev, { label, href }]);
-    setNewNavLabel("");
-    setNewNavHref("");
-  };
-
-  const removeNavLink = (i: number) => setNavLinks((prev) => prev.filter((_, idx) => idx !== i));
-
-  const moveNavLink = (i: number, dir: -1 | 1) => {
-    setNavLinks((prev) => {
-      const next = [...prev];
-      const j = i + dir;
-      if (j < 0 || j >= next.length) return prev;
-      [next[i], next[j]] = [next[j], next[i]];
-      return next;
-    });
   };
 
   const addCategory = async () => {
@@ -208,47 +162,6 @@ export function SettingsForm({
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="editor-card settings-grid--full">
-          <div className="editor-card__header">Navigation Links</div>
-          <div className="editor-card__body">
-            <p className="settings-section-note">These links appear in the site header. Visitors navigate to /admin directly — there is no admin button on the public site.</p>
-            <div className="nav-links-list">
-              {navLinks.length === 0 && (
-                <p className="settings-section-note" style={{ margin: 0 }}>No links yet. Add one below.</p>
-              )}
-              {navLinks.map((link, i) => (
-                <div className="nav-link-row" key={i}>
-                  <span className="nav-link-row__label">{link.label}</span>
-                  <span className="nav-link-row__href">{link.href}</span>
-                  <div className="nav-link-row__actions">
-                    <button className="btn btn--ghost btn--sm" title="Move up" onClick={() => moveNavLink(i, -1)} disabled={i === 0}>↑</button>
-                    <button className="btn btn--ghost btn--sm" title="Move down" onClick={() => moveNavLink(i, 1)} disabled={i === navLinks.length - 1}>↓</button>
-                    <button className="btn btn--ghost btn--sm" title="Remove" onClick={() => removeNavLink(i)}>✕</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="nav-link-add-row">
-              <input
-                type="text"
-                placeholder="Label (e.g. Home)"
-                value={newNavLabel}
-                onChange={(e) => setNewNavLabel(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNavLink(); } }}
-              />
-              <input
-                type="text"
-                placeholder="URL (e.g. /about)"
-                value={newNavHref}
-                onChange={(e) => setNewNavHref(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNavLink(); } }}
-              />
-              <button className="btn btn--ghost btn--sm" onClick={addNavLink}>Add</button>
-            </div>
-          </div>
-        </div>
-
         {/* Hero Section */}
         <div className="editor-card">
           <div className="editor-card__header">Hero Section</div>
@@ -294,33 +207,6 @@ export function SettingsForm({
                 </label>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Author */}
-        <div className="editor-card">
-          <div className="editor-card__header">Author Profile</div>
-          <div className="editor-card__body">
-            <div className="form-group">
-              <label htmlFor="authorName">Author Name</label>
-              <input type="text" id="authorName" placeholder="Author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="authorBio">Bio</label>
-              <textarea id="authorBio" rows={3} placeholder="A short bio shown on the About page…" value={authorBio} onChange={(e) => setAuthorBio(e.target.value)} />
-              <small className="field-hint">
-                The blog&apos;s main author, shown on the About page and on posts by admins who haven&apos;t set a display name in{" "}
-                <Link href="/admin/profile">Your Profile</Link>. Other writers manage their own name and bio there.
-              </small>
-            </div>
-          </div>
-        </div>
-
-        {/* Avatar */}
-        <div className="editor-card">
-          <div className="editor-card__header">Author Avatar</div>
-          <div className="editor-card__body">
-            <ImageUpload value={authorAvatar} onChange={setAuthorAvatar} round onError={(m) => showToast(m, "error")} />
           </div>
         </div>
 
@@ -409,7 +295,7 @@ export function SettingsForm({
               <input
                 type="text"
                 id="footerText"
-                placeholder={`© ${new Date().getFullYear()} ${authorName || "Author"}. All rights reserved.`}
+                placeholder={`© ${new Date().getFullYear()} ${settings.authorName || "Author"}. All rights reserved.`}
                 value={footerText}
                 onChange={(e) => setFooterText(e.target.value)}
               />

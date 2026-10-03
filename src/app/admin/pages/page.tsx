@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { NavigationEditor } from "@/components/admin/navigation-editor";
 import { formatDate } from "@/lib/utils";
 import { requirePageUser } from "@/lib/current-user";
 
@@ -64,10 +65,18 @@ export default async function AdminPagesPage() {
         ))}
         {pages.length === 0 && (
           <div className="dash-post-row dash-post-row--hint">
-            <span>Add more pages, such as Contact or Privacy, with New Page. Link to them from Settings → Navigation Links.</span>
+            <span>Add more pages, such as Contact or Privacy, with New Page. Add them to your header under Site Navigation below.</span>
           </div>
         )}
       </div>
+
+      <NavigationEditor
+        navLinks={settings.navLinks}
+        pages={[
+          { label: settings.aboutTitle || "About", href: "/about" },
+          ...pages.map((p) => ({ label: p.title, href: `/${p.slug}` })),
+        ]}
+      />
     </AdminShell>
   );
 }

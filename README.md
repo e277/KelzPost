@@ -75,8 +75,9 @@ managed from the built-in admin panel. No content is hardcoded.
 - Newsletter: see subscribers, email a published post to them in one click, remove
   readers, export the list as CSV (admins only)
 - Pages (admins only): edit the built-in About page (always at `/about`, with the
-  author photo, name and bio from Settings above it) and create custom pages
-- Settings (admins only): branding, colors, navigation, hero, layout, default author,
+  author photo, name and bio, edited on the same screen), create custom pages, and set the
+  header navigation (add any page in one click, reorder, or link anywhere)
+- Settings (admins only): branding, colors, hero, layout,
   categories, social links, footer, password change
 - Works on phones, tablets and desktops: on smaller screens the sidebar becomes a
   scrolling menu bar and the dashboard lists posts as cards
@@ -190,10 +191,10 @@ Which name a post shows, in order:
 1. The post's **Guest author** field, if filled in (for one-off writers without an account)
 2. The name of the team member the post is credited to (**Written by**, which admins can
    change)
-3. **Settings → Author Name**, for posts not credited to anyone
+3. the author name under **Pages → About**, for posts not credited to anyone
 
 You can't remove your own account or the last admin. Removing someone keeps their posts,
-which then show **Settings → Author Name**. On a blog that had a single admin before
+which then show the author name under **Pages → About**. On a blog that had a single admin before
 teams existed, the upgrade credits every existing post to that admin.
 
 ## Readership stats
