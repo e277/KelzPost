@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Category, Post } from "@/db/schema";
 import { formatDate, wordCount } from "@/lib/utils";
@@ -31,6 +31,25 @@ export function DashboardContent({
   const [sort, setSort] = useState<SortKey>("updated");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // The stats come from server-rendered props, so a dashboard left open in another tab, or
+  // restored from the browser's back/forward cache, keeps showing old numbers. Re-fetch them
+  // whenever the dashboard comes back into view.
+  useEffect(() => {
+    const refresh = () => router.refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [router]);
 
   const published = posts.filter((p) => p.status === "published").length;
   const drafts = posts.length - published;
