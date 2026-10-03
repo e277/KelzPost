@@ -16,6 +16,7 @@ import { ReadingProgress } from "@/components/reading-progress";
 import { AuthorBox } from "@/components/author-box";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 import { PostComments, type PublicComment } from "@/components/post-comments";
+import { ViewTracker } from "@/components/view-tracker";
 
 async function getPublishedPost(slug: string) {
   const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
@@ -141,6 +142,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   return (
     <>
       <ReadingProgress />
+      <ViewTracker postId={post.id} />
       <SiteHeader settings={settings} />
 
       <main>

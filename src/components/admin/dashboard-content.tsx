@@ -1,14 +1,28 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import type { Category, Post } from "@/db/schema";
-import { formatDate, wordCount } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/toast";
 
-type PostWithCategory = Post & { category: Category | null };
-type SortKey = "updated" | "created" | "title";
+export type DashboardPost = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  status: string;
+  category: { name: string } | null;
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt: Date | null;
+  words: number;
+  /** All-time views. */
+  views: number;
+  /** Views in the last 30 days. */
+  recentViews: number;
+};
+type SortKey = "updated" | "created" | "title" | "views";
 
 function greeting() {
   const h = new Date().getHours();
@@ -19,10 +33,12 @@ export function DashboardContent({
   posts,
   categoryCount,
   username,
+  readership,
 }: {
-  posts: PostWithCategory[];
+  posts: DashboardPost[];
   categoryCount: number;
   username: string;
+  readership?: ReactNode;
 }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
@@ -53,7 +69,7 @@ export function DashboardContent({
 
   const published = posts.filter((p) => p.status === "published").length;
   const drafts = posts.length - published;
-  const totalWords = posts.reduce((sum, p) => sum + wordCount(p.content), 0);
+  const totalWords = posts.reduce((sum, p) => sum + p.words, 0);
 
   const q = search.trim().toLowerCase();
   const filtered = posts
@@ -62,7 +78,9 @@ export function DashboardContent({
     .sort((a, b) =>
       sort === "title"
         ? a.title.localeCompare(b.title)
-        : sort === "created"
+        : sort === "views"
+          ? b.views - a.views
+          : sort === "created"
           ? b.createdAt.getTime() - a.createdAt.getTime()
           : b.updatedAt.getTime() - a.updatedAt.getTime()
     );
@@ -81,7 +99,7 @@ export function DashboardContent({
     }
   };
 
-  const toggleStatus = async (post: PostWithCategory) => {
+  const toggleStatus = async (post: DashboardPost) => {
     const status = post.status === "published" ? "draft" : "published";
     setBusyId(post.id);
     const res = await fetch(`/api/posts/${post.id}`, {
@@ -132,6 +150,8 @@ export function DashboardContent({
         </div>
       </div>
 
+      {readership}
+
       <div className="posts-table-wrap">
         <div className="posts-table-header">
           <h2>{statusFilter === "all" ? "All Posts" : statusFilter === "published" ? "Published" : "Drafts"}</h2>
@@ -153,6 +173,7 @@ export function DashboardContent({
               <option value="updated">Last edited</option>
               <option value="created">Newest</option>
               <option value="title">Title A–Z</option>
+              <option value="views">Most read</option>
             </select>
           </div>
         </div>
@@ -178,6 +199,7 @@ export function DashboardContent({
                   <th>Title</th>
                   <th>Category</th>
                   <th>Status</th>
+                  <th>Views</th>
                   <th>{sort === "created" ? "Created" : "Last edited"}</th>
                   <th>Actions</th>
                 </tr>
@@ -189,7 +211,7 @@ export function DashboardContent({
                       <div className="posts-table__title">
                         <Link href={`/admin/posts/${post.id}`}>{post.title}</Link>
                         <p>
-                          {post.excerpt || "No excerpt"} · {wordCount(post.content).toLocaleString()} words
+                          {post.excerpt || "No excerpt"} · {post.words.toLocaleString()} words
                         </p>
                       </div>
                     </td>
@@ -200,6 +222,10 @@ export function DashboardContent({
                       ) : (
                         <span className={`badge ${post.status === "published" ? "badge--green" : "badge--gold"}`}>{post.status}</span>
                       )}
+                    </td>
+                    <td className="posts-table__views">
+                      {post.views.toLocaleString()}
+                      {post.views > 0 && <small>{post.recentViews.toLocaleString()} in 30 days</small>}
                     </td>
                     <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }}>
                       {formatDate(sort === "created" ? post.createdAt : post.updatedAt)}
