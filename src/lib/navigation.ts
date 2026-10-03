@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, settings as settingsTable } from "@/db";
 import { getSettings } from "@/lib/site";
-import { parseNavLinks, type NavLink } from "@/lib/nav-links";
+import { ABOUT_PAGE_ID, BLOG_PAGE_ID, HOME_PAGE_ID, parseNavLinks, type NavLink } from "@/lib/nav-links";
 
 type NavPage = { id: string; title: string; slug: string };
 
@@ -49,4 +49,41 @@ export async function removePageNavLink(page: Pick<NavPage, "id" | "slug">): Pro
 /** Whether the page has a link in the header menu. */
 export function isPageInNav(navLinks: string, page: NavPage): boolean {
   return parseNavLinks(navLinks).some((l) => l.pageId === page.id || (!l.pageId && l.href === hrefFor(page)));
+}
+
+/** A page that can be in the header menu: the built-in Home, Blog and About, or a custom page. */
+export type MenuPage = { id: string; title: string; href: string };
+
+export async function listMenuPages(): Promise<MenuPage[]> {
+  const [settings, pages] = await Promise.all([
+    getSettings(),
+    db.query.pages.findMany({ columns: { id: true, title: true, slug: true }, orderBy: (p, { asc }) => asc(p.createdAt) }),
+  ]);
+  return [
+    { id: HOME_PAGE_ID, title: "Home", href: "/" },
+    { id: BLOG_PAGE_ID, title: "Blog", href: "/blog" },
+    { id: ABOUT_PAGE_ID, title: settings.aboutTitle || "About", href: "/about" },
+    ...pages.map((p) => ({ id: p.id, title: p.title, href: hrefFor(p) })),
+  ];
+}
+
+/** The ids of the pages in the header menu, in menu order. */
+export function menuPageIds(navLinks: string, pages: MenuPage[]): string[] {
+  const ids: string[] = [];
+  for (const link of parseNavLinks(navLinks)) {
+    const page = pages.find((p) => (link.pageId ? p.id === link.pageId : p.href === link.href));
+    if (page && !ids.includes(page.id)) ids.push(page.id);
+  }
+  return ids;
+}
+
+/** Rebuilds the header menu from page ids, in the given order; unknown ids are skipped. */
+export async function saveMenu(pageIds: string[], pages: MenuPage[]): Promise<string[]> {
+  const links: NavLink[] = [];
+  for (const id of pageIds) {
+    const page = pages.find((p) => p.id === id);
+    if (page && !links.some((l) => l.pageId === id)) links.push({ label: page.title, href: page.href, pageId: page.id });
+  }
+  await saveNavLinks(links);
+  return links.map((l) => l.pageId!);
 }

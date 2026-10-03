@@ -16,7 +16,9 @@ managed from the built-in admin panel. No content is hardcoded.
 - Post pages with reading time, a reading-progress bar, a table of contents (built from
   the post's H2/H3 headings), an author box, share buttons (X, LinkedIn, Facebook, email,
   copy link, native share), previous/next links and related posts
-- Category pages (`/category/your-category`) and tag pages (`/tag/your-tag`)
+- Blog page (`/blog`): every post, newest first, with the categories as filters along
+  the top (`/blog?category=your-category`). Old `/category/your-category` links forward
+  there. Tag pages live at `/tag/your-tag`
 - Author pages (`/author/their-name`) with each writer's bio, photo and posts. Bylines
   link to them (see [Team and authors](#team-and-authors))
 - Rich posts: tables, code blocks with syntax highlighting, and YouTube/Vimeo embeds
@@ -74,14 +76,16 @@ managed from the built-in admin panel. No content is hardcoded.
 - Comments: approve, reply to, mark as spam or delete reader comments (admins only)
 - Newsletter: see subscribers, email a published post to them in one click, remove
   readers, export the list as CSV (admins only)
-- Pages (admins only): edit the built-in About page (always at `/about`, with the
-  author photo, name and bio, edited on the same screen), create custom pages, and set the
-  header navigation. A new page gets its header link automatically (untick **Show in
-  navigation** to leave it out), and that link follows the page's title and address and
-  goes away when the page is deleted. Site Navigation reorders the links and adds others,
-  like Home, a category or another site
-- Categories & Tags (admins only): add or remove categories, and clean up tags you no
-  longer use
+- Pages (admins only): every page in one list: the built-in Home, Blog (always at
+  `/blog`; its filters are your categories) and About (always at `/about`, with the author
+  photo, name and bio, edited on the same screen) pages, plus your custom pages. The
+  header menu is made from these pages: tick **In menu** on a page to show it and use the
+  arrows to order it. A new page goes into the menu when it is created (untick **Show in
+  navigation** in its editor to leave it out), and its link follows the page's title and
+  address and goes away when the page is deleted. The menu only links to the blog's own
+  pages. New sites start with Home, Blog and About in the menu
+- Categories & Tags (admins only): add or remove categories (they become the Blog page's
+  filters), and clean up tags you no longer use
 - Configurations (admins only, formerly Settings): how the public site looks: title,
   colors, homepage hero and layout, social links and footer. Each person changes their
   own password under **Your Profile**
@@ -241,7 +245,7 @@ The home page, post pages, custom pages, About page, RSS feed and sitemap are se
 Vercel's cache instead of being rebuilt on every visit. Saving, publishing, unpublishing
 or deleting posts, and changing pages, categories, comments or settings, refreshes them
 straight away. They are also rebuilt at most once a minute so scheduled posts appear on
-time. Category, tag, author and search pages are always built fresh.
+time. The Blog page and the tag, author and search pages are always built fresh.
 
 ## Comments
 
@@ -293,7 +297,9 @@ src/
     post/[slug]/page.tsx      # Post page
     [slug]/page.tsx           # Custom pages
     about/page.tsx            # About page
-    category/[slug]/, tag/[slug]/  # Category and tag archives
+    blog/                     # Blog page: all posts, filtered by category
+    category/[slug]/          # Forwards old category links to the Blog page
+    tag/[slug]/               # Tag archives
     author/[slug]/            # Author pages
     search/                   # Search results
     newsletter/               # Newsletter confirm and unsubscribe pages

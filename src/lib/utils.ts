@@ -6,11 +6,16 @@ export function slugify(str: string): string {
 }
 
 // Top-level addresses the blog already uses, so a custom page can't take them.
-// "about" is the built-in About page, edited under Admin → Pages.
+// "about" and "blog" are built-in pages, listed under Admin → Pages.
 export const RESERVED_PAGE_SLUGS = new Set([
-  "about", "admin", "api", "author", "category", "feed.xml", "newsletter",
+  "about", "admin", "api", "author", "blog", "category", "feed.xml", "newsletter",
   "og", "post", "robots.txt", "search", "sitemap.xml", "tag",
 ]);
+
+/** A category lives on the Blog page as a filter, so its address is /blog?category=its-slug. */
+export function categoryHref(categoryName: string): string {
+  return `/blog?category=${slugify(categoryName)}`;
+}
 
 export function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "";

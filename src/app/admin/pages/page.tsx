@@ -1,25 +1,61 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
-import { NavigationEditor } from "@/components/admin/navigation-editor";
+import { PageList, type PageListRow } from "@/components/admin/page-list";
 import { formatDate } from "@/lib/utils";
-import { ABOUT_PAGE_ID } from "@/lib/nav-links";
+import { ABOUT_PAGE_ID, BLOG_PAGE_ID, HOME_PAGE_ID } from "@/lib/nav-links";
+import { listMenuPages, menuPageIds } from "@/lib/navigation";
 import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPagesPage() {
   await requirePageUser("admin");
-  const [settings, pages] = await Promise.all([
+  const [settings, pages, menuPages] = await Promise.all([
     getSettings(),
     db.query.pages.findMany({ orderBy: (p, { asc }) => asc(p.createdAt) }),
+    listMenuPages(),
   ]);
+
+  const rows: PageListRow[] = [
+    {
+      id: HOME_PAGE_ID,
+      title: "Home",
+      builtIn: true,
+      meta: "/ · Your newest posts under the homepage hero",
+      viewHref: "/",
+      editHref: "/admin/configurations",
+      editLabel: "Configure",
+    },
+    {
+      id: BLOG_PAGE_ID,
+      title: "Blog",
+      builtIn: true,
+      meta: "/blog · Every post, with your categories as filters along the top",
+      viewHref: "/blog",
+      editHref: "/admin/categories",
+      editLabel: "Categories",
+    },
+    {
+      id: ABOUT_PAGE_ID,
+      title: settings.aboutTitle || "About",
+      builtIn: true,
+      meta: "/about · Shows your author photo, name and bio above the content",
+      viewHref: "/about",
+      editHref: "/admin/pages/about",
+    },
+    ...pages.map((page) => ({
+      id: page.id,
+      title: page.title,
+      meta: `/${page.slug} · Updated ${formatDate(page.updatedAt)}`,
+      viewHref: `/${page.slug}`,
+      editHref: `/admin/pages/${page.id}`,
+    })),
+  ];
 
   return (
     <AdminShell
-     
       active="pages"
       title="Pages"
       actions={
@@ -28,57 +64,10 @@ export default async function AdminPagesPage() {
         </Link>
       }
     >
-      <div className="dash-posts">
-        <PageRow
-          title={<>{settings.aboutTitle || "About"} <span className="badge badge--gray">Built-in</span></>}
-          meta="/about · Shows your author photo, name and bio above the content"
-          editHref="/admin/pages/about"
-          viewHref="/about"
-        />
-        {pages.map((page) => (
-          <PageRow
-            key={page.id}
-            title={page.title}
-            meta={`/${page.slug} · Updated ${formatDate(page.updatedAt)}`}
-            editHref={`/admin/pages/${page.id}`}
-            viewHref={`/${page.slug}`}
-          />
-        ))}
-        {pages.length === 0 && (
-          <div className="dash-post-row dash-post-row--hint">
-            <span>Add more pages, such as Contact or Privacy, with New Page. Each new page is added to your header menu too, unless you untick Show in navigation.</span>
-          </div>
-        )}
-      </div>
-
-      <NavigationEditor
-        navLinks={settings.navLinks}
-        pages={[
-          { pageId: ABOUT_PAGE_ID, label: settings.aboutTitle || "About", href: "/about" },
-          ...pages.map((p) => ({ pageId: p.id, label: p.title, href: `/${p.slug}` })),
-        ]}
-      />
+      <p className="settings-section-note">
+        Your site&apos;s header menu is made from these pages: tick In menu to show a page there, and use the arrows to set the order. A new page goes into the menu when you create it, unless you untick Show in navigation.
+      </p>
+      <PageList rows={rows} menu={menuPageIds(settings.navLinks, menuPages)} />
     </AdminShell>
-  );
-}
-
-function PageRow({ title, meta, editHref, viewHref }: { title: ReactNode; meta: string; editHref: string; viewHref: string }) {
-  return (
-    <div className="dash-post-row">
-      <div className="dash-post-row__info">
-        <Link href={editHref} className="dash-post-row__title">
-          {title}
-        </Link>
-        <span className="dash-post-row__meta">{meta}</span>
-      </div>
-      <div className="dash-post-row__actions">
-        <a href={viewHref} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-          View
-        </a>
-        <Link href={editHref} className="btn btn--ghost btn--sm">
-          Edit
-        </Link>
-      </div>
-    </div>
   );
 }
