@@ -10,12 +10,21 @@ managed from the built-in admin panel. No content is hardcoded.
 **For readers**
 
 - Home page with search (titles, excerpts and full text), category filters and "load more"
-- Post pages with reading time, a reading-progress bar, share buttons (X, LinkedIn,
-  Facebook, email, copy link, native share), previous/next links and related posts
+- Post pages with reading time, a reading-progress bar, a table of contents (built from
+  the post's H2/H3 headings), an author box, share buttons (X, LinkedIn, Facebook, email,
+  copy link, native share), previous/next links and related posts
+- Category pages (`/category/your-category`) and tag pages (`/tag/your-tag`)
+- Comments on every post. New comments wait for your approval before they appear (see
+  [Comments](#comments))
+- Light and dark mode: follows the reader's device setting, with a toggle in the header
+  that remembers their choice (the admin panel always stays light)
 - Custom pages (`/your-page`) and an About page
 - RSS feed (`/feed.xml`), `sitemap.xml`, `robots.txt`, Open Graph/Twitter cards and
   `BlogPosting` structured data
-- Responsive layout with a mobile menu, plus a custom 404 page
+- Share images: posts without their own image get a generated preview card with the
+  title, author, date and reading time (`/post/<slug>/og`); the site has one too (`/og`)
+- Responsive layout with a mobile menu, a footer that stays at the bottom of short
+  pages, and a custom 404 page
 - Newsletter signup on the home page and every post, with email confirmation and a
   one-click unsubscribe link in every email
 
@@ -25,11 +34,21 @@ managed from the built-in admin panel. No content is hardcoded.
 - Login protection: a rate limit of 5 failed attempts per 15 minutes per IP, constant-time
   session checks, an optional "keep me signed in", and a redirect back to the page you
   were trying to open
-- Dashboard: stats, search, filter and sort, one-click publish/unpublish, draft previews
+- Dashboard: stats (total, published, drafts, words written) that click through to a
+  filtered list and stay current across tabs, search, filter and sort, one-click
+  publish/unpublish, draft previews
 - Editor: rich text (headings, lists, quotes, links, images, code blocks, dividers),
   editable URL slug, word count, unsaved-changes warning, Ctrl/⌘+S to save
-- Images are resized and compressed in the browser, then stored on Vercel Blob
-- Images are resized and compressed in the browser before upload
+- Scheduled publishing: set the status to Published with a publish date in the future
+  and the post goes live on its own at that time (it shows as Scheduled until then)
+- Tags (up to 10 per post) alongside categories
+- Per-post SEO: meta title, meta description and social share image, with a search
+  result preview. Left empty, they fall back to the title, excerpt and cover image
+- Author: posts show **Settings → Author Name**, bio and avatar. A post's own **Author**
+  field is only for guest writers and overrides the name on that post
+- Images are resized and compressed in the browser, then stored on Vercel Blob (see
+  step 6 of [Deploying to Vercel](#deploying-to-vercel))
+- Comments: approve, reply to, mark as spam or delete reader comments
 - Newsletter: see subscribers, email a published post to them in one click, remove
   readers, export the list as CSV
 - Settings: branding, colors, navigation, hero, layout, author, categories, social
@@ -40,6 +59,7 @@ managed from the built-in admin panel. No content is hardcoded.
 
 - **Next.js 16** (App Router, TypeScript, `src/` directory)
 - **Drizzle ORM** with **PostgreSQL** via the `postgres` driver (e.g. [Neon](https://neon.tech) via the Vercel Marketplace)
+- **Vercel Blob** (`@vercel/blob`) for uploaded images
 - **Nodemailer** for newsletter email over SMTP
 - **bcryptjs** for password hashing; signed-cookie sessions (Web Crypto)
 - Plain CSS (`src/app/globals.css`)
@@ -68,7 +88,9 @@ managed from the built-in admin panel. No content is hardcoded.
    the database tables are created automatically. Vercel only picks up new or changed
    environment variables on the next deployment, so **redeploy after changing them**
    (Deployments → ⋯ on the latest one → **Redeploy**).
-5. **Visit `/admin/login`** and create your admin account.
+5. **Visit `/admin/login`** and create your admin account. If something is off, open
+   `/api/health`: it shows whether the deployment can see `SESSION_SECRET` and the
+   database URLs, and whether the database is reachable (yes/no only, never values).
 6. **Add image storage (recommended).** In the project, open **Storage → Create Database →
    Blob**, and connect it to the project. This sets `BLOB_READ_WRITE_TOKEN`. Then redeploy.
    Uploaded images go to Blob from then on, and the build moves any images already saved
@@ -111,14 +133,26 @@ npm run dev
 | `npm run db:check` | Check the migration history is consistent |
 | `npm run db:seed` | Seed default settings and categories |
 | `npm run db:studio` | Browse the database with Drizzle Studio |
+| `npm run images:move` | Move images saved in the database over to Vercel Blob (runs on every Vercel build; does nothing without a Blob store) |
 
 ## CI
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `main`. Against a
 throwaway Postgres it checks that every schema change has a committed migration,
 applies the migrations, seeds the database, and runs lint, typecheck and a production
-build. Vercel does the
-deploying.
+build. Vercel does the deploying.
+
+## Comments
+
+Comments are stored in your own database; there is no outside service to set up.
+
+- Readers leave a name and comment (email optional, never shown). New comments are
+  **pending** until you approve them in **Admin → Comments**, where you can also reply,
+  mark as spam or delete. Your replies post as Settings → Author Name with an "Author"
+  badge, appear straight away, and approve the comment you replied to.
+- Spam protection: a hidden honeypot field, a minimum time to fill in the form, a limit
+  of 5 comments per 10 minutes per IP, and comments with more than two links go straight
+  to Spam.
 
 ## Newsletter
 
@@ -158,18 +192,25 @@ src/
     post/[slug]/page.tsx      # Post page
     [slug]/page.tsx           # Custom pages
     about/page.tsx            # About page
+    category/[slug]/, tag/[slug]/  # Category and tag archives
+    newsletter/               # Newsletter confirm and unsubscribe pages
+    og/, post/[slug]/og/      # Generated share images
     feed.xml/route.ts         # RSS feed
     sitemap.ts, robots.ts     # SEO
     admin/                    # Admin panel (protected by src/proxy.ts)
       login/                  # Login and first-run setup
       posts/[id]/preview/     # Draft preview
-    api/                      # Route handlers (auth, posts, pages, categories, settings)
+      comments/, newsletter/  # Comment moderation, newsletter sending
+    api/                      # Route handlers (auth, posts, pages, categories, tags,
+                              # comments, newsletter, uploads, settings, health)
   components/                 # Shared UI (public and admin)
   db/
     schema.ts                 # Tables, relations and row types
     index.ts                  # Database client (db)
     seed.ts, seed-data.json   # Initial settings and categories
-  lib/                        # Auth, rate limit, site settings, utils
+    move-images-to-blob.ts    # npm run images:move
+  lib/                        # Auth, rate limit, site settings, posts, comments,
+                              # newsletter, mailer, Blob, utils
   proxy.ts                    # Redirects signed-out users away from /admin/*
 drizzle/                      # SQL migrations (generated by drizzle-kit)
 drizzle.config.ts             # drizzle-kit configuration
