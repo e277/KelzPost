@@ -1,7 +1,8 @@
 import Link from "next/link";
 import bcrypt from "bcryptjs";
-import { db, categories } from "@/db";
-import { getSession } from "@/lib/auth";
+import { eq } from "drizzle-orm";
+import { db, categories, posts as postsTable } from "@/db";
+import { isAdmin, requirePageUser } from "@/lib/current-user";
 import { getSettings } from "@/lib/site";
 import { getReadershipStats } from "@/lib/stats";
 import { wordCount } from "@/lib/utils";
@@ -12,16 +13,21 @@ import { ReadershipPanel } from "@/components/admin/readership-panel";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const [settings, session, allPosts, categoryCount, stats] = await Promise.all([
+  const user = await requirePageUser();
+  // Authors see, and get stats for, only their own posts.
+  const ownOnly = !isAdmin(user);
+  const [settings, allPosts, categoryCount, stats] = await Promise.all([
     getSettings(),
-    getSession(),
-    db.query.posts.findMany({ with: { category: true }, orderBy: (p, { desc }) => desc(p.updatedAt) }),
+    db.query.posts.findMany({
+      where: ownOnly ? eq(postsTable.authorId, user.id) : undefined,
+      with: { category: true },
+      orderBy: (p, { desc }) => desc(p.updatedAt),
+    }),
     db.$count(categories),
-    getReadershipStats(),
+    getReadershipStats(ownOnly ? user.id : undefined),
   ]);
 
-  const user = session ? await db.query.adminUsers.findFirst({ where: (u, { eq }) => eq(u.username, session.username) }) : null;
-  const usingDefaultPassword = user ? await bcrypt.compare("admin123", user.passwordHash) : false;
+  const usingDefaultPassword = await bcrypt.compare("admin123", user.passwordHash);
 
   // Only what the dashboard shows, so post bodies aren't sent to the browser.
   const posts: DashboardPost[] = allPosts.map((p) => ({
@@ -59,13 +65,13 @@ export default async function AdminDashboardPage() {
       {usingDefaultPassword && (
         <div className="admin-alert" role="alert">
           <strong>You&apos;re still using the default password.</strong> Anyone who knows it can sign in.{" "}
-          <Link href="/admin/settings#security">Change it now →</Link>
+          <Link href="/admin/profile#security">Change it now →</Link>
         </div>
       )}
       <DashboardContent
         posts={posts}
         categoryCount={categoryCount}
-        username={session?.username || "admin"}
+        username={user.displayName.trim() || user.username}
         readership={
           <ReadershipPanel days={stats.days} last30={stats.last30} previous30={stats.previous30} allTime={stats.allTime} topPosts={topPosts} />
         }

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { comments, db, posts } from "@/db";
-import { getSession } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
+import { refreshPublicPages } from "@/lib/revalidate";
+import { memberName } from "@/lib/team";
 import { getSettings } from "@/lib/site";
 import { livePosts } from "@/lib/posts";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -14,7 +16,7 @@ const MIN_FILL_MS = 3000;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const session = await getSession();
+  const session = await getCurrentUser();
 
   const postId = typeof body.postId === "string" ? body.postId : "";
   const post = postId
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     parentStatus = parent.status;
   }
 
-  // The signed-in admin replies as the blog's author, approved straight away.
+  // Signed-in team members reply under their own name, approved straight away.
   if (session) {
     const content = typeof body.content === "string" ? body.content.replace(/\r\n?/g, "\n").trim() : "";
     if (!content) return NextResponse.json({ error: "Please write a comment." }, { status: 400 });
@@ -52,8 +54,9 @@ export async function POST(req: NextRequest) {
     }
     const [created] = await db
       .insert(comments)
-      .values({ postId: post.id, parentId, authorName: settings.authorName, content, status: "approved", isAuthor: true })
+      .values({ postId: post.id, parentId, authorName: memberName(session, settings.authorName), content, status: "approved", isAuthor: true })
       .returning();
+    refreshPublicPages();
     return NextResponse.json(created, { status: 201 });
   }
 

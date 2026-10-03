@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { asc } from "drizzle-orm";
 import { db, subscribers } from "@/db";
-import { getSession } from "@/lib/auth";
+import { requireUser } from "@/lib/current-user";
 
 // Quotes cells that need it and defuses values a spreadsheet would run as a formula.
 function csvCell(value: string): string {
@@ -11,8 +11,8 @@ function csvCell(value: string): string {
 
 /** Downloads the subscriber list as CSV, e.g. to move it to another email service. */
 export async function GET() {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser("admin");
+  if (error) return error;
 
   const rows = await db.select().from(subscribers).orderBy(asc(subscribers.createdAt));
   const lines = [

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Category, Post, Tag } from "@/db/schema";
-import type { TocItem } from "@/lib/posts";
+import type { Byline, TocItem } from "@/lib/posts";
 import { formatDate, categoryBadgeClass, readingTime, slugify } from "@/lib/utils";
 
 type PostWithCategory = Post & { category: Category | null };
@@ -9,14 +9,14 @@ type PostWithCategory = Post & { category: Category | null };
 export function PostArticle({
   post,
   categories,
-  authorName,
+  byline,
   tags = [],
   bodyHtml,
   toc = [],
 }: {
   post: PostWithCategory;
   categories: Category[];
-  authorName: string;
+  byline: Byline;
   tags?: Tag[];
   /** Content to render instead of post.content (e.g. with heading anchors added). */
   bodyHtml?: string;
@@ -43,7 +43,7 @@ export function PostArticle({
         {post.excerpt && <p className="post-lede">{post.excerpt}</p>}
         <div className="post-meta">
           <span>
-            By <strong>{post.author || authorName}</strong>
+            By <strong>{byline.href ? <Link href={byline.href}>{byline.name}</Link> : byline.name}</strong>
           </span>
           <span className="post-meta-divider" />
           <time dateTime={(post.publishedAt || post.createdAt).toISOString()}>

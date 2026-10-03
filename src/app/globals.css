@@ -1660,3 +1660,15 @@ html[data-theme="dark"] .post-body th { background: var(--dk-raised); }
 .revision-list__refresh { margin-top: 14px; font-size: .8rem; }
 .editor-backup { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .editor-backup__actions { display: flex; gap: 8px; }
+
+/* ── Team and profile ── */
+.team-you { margin-left: 8px; vertical-align: middle; }
+.team-add__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+.team-add .form-error { margin-bottom: 12px; }
+.team-add .field-hint { margin-top: 12px; }
+@media (max-width: 640px) { .team-add__grid { grid-template-columns: 1fr; } }
+.profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.profile-grid .editor-card { margin-bottom: 0; }
+.profile-meta { font-size: .82rem; color: var(--gray-400); margin-bottom: 18px; }
+.profile-meta a { color: var(--navy); font-weight: 600; }
+@media (max-width: 1024px) { .profile-grid { grid-template-columns: 1fr; } }

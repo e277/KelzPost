@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { requireUser } from "@/lib/current-user";
 import { isMailerConfigured, missingMailerSettings } from "@/lib/mailer";
 import { sendPostToSubscribers } from "@/lib/newsletter";
 import { getSettings } from "@/lib/site";
@@ -9,8 +9,8 @@ export const maxDuration = 300;
 
 /** Emails a live post to confirmed subscribers: { postId }. */
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser("admin");
+  if (error) return error;
 
   if (!isMailerConfigured()) {
     return NextResponse.json({ error: `Email isn't set up yet. Missing: ${missingMailerSettings().join(", ")}.` }, { status: 503 });

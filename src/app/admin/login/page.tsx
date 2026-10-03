@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db, adminUsers } from "@/db";
 import { getSettings } from "@/lib/site";
-import { getSession } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/current-user";
 import { LoginForm } from "@/components/admin/login-form";
 import { SetupForm } from "@/components/admin/setup-form";
 
@@ -11,8 +11,8 @@ export const metadata = { title: "Admin Login", robots: { index: false } };
 
 export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
-  const session = await getSession();
-  if (session) redirect("/admin");
+  // A cookie for an account that was removed doesn't count as signed in.
+  if (await getCurrentUser()) redirect("/admin");
 
   const [settings, adminCount] = await Promise.all([
     getSettings(),

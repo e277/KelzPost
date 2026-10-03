@@ -5,10 +5,12 @@ import { livePosts } from "@/lib/posts";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { NewsletterManager } from "@/components/admin/newsletter-manager";
+import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminNewsletterPage() {
+  await requirePageUser("admin");
   const [settings, subscriberRows, recentPosts] = await Promise.all([
     getSettings(),
     db

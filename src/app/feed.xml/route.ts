@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { livePosts } from "@/lib/posts";
+import { cardRelations, livePosts, postByline } from "@/lib/posts";
 import { getSettings, absoluteUrl, SITE_URL } from "@/lib/site";
 import { escapeXml, summarize } from "@/lib/utils";
 
@@ -10,7 +10,7 @@ export async function GET() {
     getSettings(),
     db.query.posts.findMany({
       where: livePosts(),
-      with: { category: true },
+      with: cardRelations,
       orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
       limit: 30,
     }),
@@ -24,7 +24,7 @@ export async function GET() {
       <link>${url}</link>
       <guid isPermaLink="true">${url}</guid>
       <pubDate>${(post.publishedAt || post.createdAt).toUTCString()}</pubDate>
-      <dc:creator>${escapeXml(post.author || settings.authorName)}</dc:creator>${
+      <dc:creator>${escapeXml(postByline(post, settings.authorName).name)}</dc:creator>${
         post.category ? `\n      <category>${escapeXml(post.category.name)}</category>` : ""
       }
       <description>${escapeXml(summarize(post.excerpt, post.content, 300))}</description>

@@ -5,10 +5,12 @@ import { formatDate } from "@/lib/utils";
 import { COMMENT_STATUSES, isCommentStatus } from "@/lib/comments";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { CommentsModeration, type AdminComment } from "@/components/admin/comments-moderation";
+import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCommentsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  await requirePageUser("admin");
   const { status: requested } = await searchParams;
   const status = isCommentStatus(requested) ? requested : "pending";
 

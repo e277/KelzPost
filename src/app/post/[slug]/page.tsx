@@ -6,7 +6,17 @@ import { comments as commentsTable, db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { isMailerConfigured } from "@/lib/mailer";
 import { formatDate, summarize, readingTime } from "@/lib/utils";
-import { cardRelations, getPostTags, isLive, livePosts, toPostSummary, renderPostBody } from "@/lib/posts";
+import {
+  cardRelations,
+  getPostTags,
+  isLive,
+  livePosts,
+  postAuthorProfile,
+  postByline,
+  postPageRelations,
+  renderPostBody,
+  toPostSummary,
+} from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PostArticle } from "@/components/post-article";
@@ -19,7 +29,7 @@ import { PostComments, type PublicComment } from "@/components/post-comments";
 import { ViewTracker } from "@/components/view-tracker";
 
 async function getPublishedPost(slug: string) {
-  const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
+  const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: postPageRelations });
   return post && isLive(post) ? post : null;
 }
 
@@ -80,7 +90,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       siteName: settings.blogTitle,
       publishedTime: (post.publishedAt || post.createdAt).toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
-      authors: [post.author || settings.authorName],
+      authors: [postByline(post, settings.authorName).name],
       section: post.category?.name,
       tags: tags.map((t) => t.name),
       images: [image],
@@ -106,6 +116,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   const [tags, comments] = await Promise.all([getPostTags(post.id), getComments(post.id)]);
   const { html, toc } = renderPostBody(post.content);
+  const byline = postByline(post, settings.authorName);
+  const author = postAuthorProfile(post, settings);
 
   // Chronological neighbours and up to 3 related posts (same category first, then most recent).
   const published = await db.query.posts.findMany({
@@ -132,7 +144,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     articleSection: post.category?.name,
     datePublished: (post.publishedAt || post.createdAt).toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: { "@type": "Person", name: post.author || settings.authorName, url: absoluteUrl("/about") },
+    author: { "@type": "Person", name: author.name, ...(author.href && { url: absoluteUrl(author.href) }) },
     publisher: { "@type": "Organization", name: settings.blogTitle, url: absoluteUrl("/") },
     mainEntityOfPage: absoluteUrl(`/post/${post.slug}`),
     timeRequired: `PT${readingTime(post.content)}M`,
@@ -154,9 +166,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             Back to Blog
           </Link>
 
-          <PostArticle post={post} categories={categories} authorName={settings.authorName} tags={tags} bodyHtml={html} toc={toc} />
+          <PostArticle post={post} categories={categories} byline={byline} tags={tags} bodyHtml={html} toc={toc} />
 
-          <AuthorBox settings={settings} name={post.author || settings.authorName} />
+          <AuthorBox author={author} />
 
           {isMailerConfigured() && <NewsletterSignup blogTitle={settings.blogTitle} />}
 

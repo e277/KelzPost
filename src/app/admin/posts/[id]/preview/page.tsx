@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { canEditPost, requirePageUser } from "@/lib/current-user";
-import { getPostTags, isLive, isScheduled, renderPostBody } from "@/lib/posts";
+import { getPostTags, isLive, isScheduled, postByline, postPageRelations, renderPostBody } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PostArticle } from "@/components/post-article";
@@ -18,7 +18,7 @@ export default async function PreviewPostPage({ params }: { params: Promise<{ id
   const [settings, categories, post] = await Promise.all([
     getSettings(),
     db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),
-    db.query.posts.findFirst({ where: (p, { eq }) => eq(p.id, id), with: { category: true } }),
+    db.query.posts.findFirst({ where: (p, { eq }) => eq(p.id, id), with: postPageRelations }),
   ]);
 
   if (!post || !canEditPost(user, post)) notFound();
@@ -42,7 +42,7 @@ export default async function PreviewPostPage({ params }: { params: Promise<{ id
       <SiteHeader settings={settings} />
       <main>
         <div className="post-wrapper">
-          <PostArticle post={post} categories={categories} authorName={settings.authorName} tags={tags} bodyHtml={html} toc={toc} />
+          <PostArticle post={post} categories={categories} byline={postByline(post, settings.authorName)} tags={tags} bodyHtml={html} toc={toc} />
         </div>
       </main>
       <SiteFooter settings={settings} />

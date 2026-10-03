@@ -1,5 +1,5 @@
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
-import { db, posts, postTags, tags, type AdminUser, type Category, type Post, type Tag } from "@/db";
+import { db, posts, postTags, tags, type AdminUser, type Category, type Post, type Settings, type Tag } from "@/db";
 import { highlightCodeBlocks } from "@/lib/highlight";
 import { readingTime, slugify, summarize } from "@/lib/utils";
 
@@ -120,6 +120,26 @@ export function postByline(post: { author: string; authorUser?: BylineUser }, de
   if (user?.displayName.trim()) return { name: user.displayName.trim(), href: user.slug ? `/author/${user.slug}` : null };
   return { name: defaultName, href: null };
 }
+
+/** The author card under a post: name, bio, photo and where to read more about them. */
+export type AuthorProfile = { name: string; href: string; bio: string; avatar: string } | { name: string; href: null; bio: ""; avatar: "" };
+
+export function postAuthorProfile(
+  post: { author: string; authorUser?: Pick<AdminUser, "displayName" | "slug" | "bio" | "avatar"> | null },
+  settings: Pick<Settings, "authorName" | "authorBio" | "authorAvatar">
+): AuthorProfile {
+  const byline = postByline(post, settings.authorName);
+  if (post.author.trim()) return { name: byline.name, href: null, bio: "", avatar: "" };
+  const user = post.authorUser;
+  if (user?.displayName.trim()) return { name: byline.name, href: byline.href ?? "/about", bio: user.bio, avatar: user.avatar };
+  return { name: settings.authorName, href: "/about", bio: settings.authorBio, avatar: settings.authorAvatar };
+}
+
+/** Relations to load for a single post page (pass as `with` to db.query.posts). */
+export const postPageRelations = {
+  category: true,
+  authorUser: { columns: { displayName: true, slug: true, bio: true, avatar: true } },
+} as const;
 
 /** Relations to load for post cards (pass as `with` to db.query.posts). */
 export const cardRelations = {
