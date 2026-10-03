@@ -25,41 +25,49 @@ export default async function AdminPagesPage() {
         </Link>
       }
     >
-      {pages.length === 0 ? (
-        <div className="dash-empty">
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={1.5} width="48" height="48">
-            <rect x="8" y="4" width="32" height="40" rx="3" />
-            <path d="M16 16h16M16 22h16M16 28h10" />
-          </svg>
-          <p>No pages yet.</p>
-          <Link href="/admin/pages/new" className="btn btn--primary btn--sm">
-            Create your first page
-          </Link>
+      <div className="dash-posts">
+        <div className="dash-post-row">
+          <div className="dash-post-row__info">
+            <Link href="/admin/pages/about" className="dash-post-row__title">
+              {settings.aboutTitle || "About"} <span className="badge badge--gray">Built-in</span>
+            </Link>
+            <span className="dash-post-row__meta">/about · Shows your author photo, name and bio above the content</span>
+          </div>
+          <div className="dash-post-row__actions">
+            <a href="/about" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
+              View
+            </a>
+            <Link href="/admin/pages/about" className="btn btn--ghost btn--sm">
+              Edit
+            </Link>
+          </div>
         </div>
-      ) : (
-        <div className="dash-posts">
-          {pages.map((page) => (
-            <div className="dash-post-row" key={page.id}>
-              <div className="dash-post-row__info">
-                <Link href={`/admin/pages/${page.id}`} className="dash-post-row__title">
-                  {page.title}
-                </Link>
-                <span className="dash-post-row__meta">
-                  /{page.slug} · Updated {formatDate(page.updatedAt)}
-                </span>
-              </div>
-              <div className="dash-post-row__actions">
-                <a href={`/${page.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-                  View
-                </a>
-                <Link href={`/admin/pages/${page.id}`} className="btn btn--ghost btn--sm">
-                  Edit
-                </Link>
-              </div>
+        {pages.map((page) => (
+          <div className="dash-post-row" key={page.id}>
+            <div className="dash-post-row__info">
+              <Link href={`/admin/pages/${page.id}`} className="dash-post-row__title">
+                {page.title}
+              </Link>
+              <span className="dash-post-row__meta">
+                /{page.slug} · Updated {formatDate(page.updatedAt)}
+              </span>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="dash-post-row__actions">
+              <a href={`/${page.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
+                View
+              </a>
+              <Link href={`/admin/pages/${page.id}`} className="btn btn--ghost btn--sm">
+                Edit
+              </Link>
+            </div>
+          </div>
+        ))}
+        {pages.length === 0 && (
+          <div className="dash-post-row dash-post-row--hint">
+            <span>Add more pages, such as Contact or Privacy, with New Page. Link to them from Settings → Navigation Links.</span>
+          </div>
+        )}
+      </div>
     </AdminShell>
   );
 }

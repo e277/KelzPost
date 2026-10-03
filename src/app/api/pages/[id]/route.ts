@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, pages } from "@/db";
 import { requireUser } from "@/lib/current-user";
 import { refreshPublicPages } from "@/lib/revalidate";
-import { slugify } from "@/lib/utils";
+import { RESERVED_PAGE_SLUGS, slugify } from "@/lib/utils";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +21,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
 
   const desiredSlug = rawSlug?.trim() ? slugify(rawSlug.trim()) : slugify(title.trim());
+  if (!desiredSlug || RESERVED_PAGE_SLUGS.has(desiredSlug)) {
+    return NextResponse.json({ error: `/${desiredSlug} is already used by the blog. Pick another address.` }, { status: 409 });
+  }
   const existing = await db.query.pages.findFirst({ where: eq(pages.slug, desiredSlug) });
   if (existing && existing.id !== id) {
     return NextResponse.json({ error: "That slug is already in use." }, { status: 409 });

@@ -3,7 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { db, pages } from "@/db";
 import { requireUser } from "@/lib/current-user";
 import { refreshPublicPages } from "@/lib/revalidate";
-import { slugify } from "@/lib/utils";
+import { RESERVED_PAGE_SLUGS, slugify } from "@/lib/utils";
 
 export async function GET() {
   const rows = await db.select().from(pages).orderBy(asc(pages.createdAt));
@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
   const { title, content } = await req.json();
   if (!title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
 
-  const baseSlug = slugify(title.trim());
+  const baseSlug = slugify(title.trim()) || "page";
   let slug = baseSlug;
   let attempt = 1;
-  while (await db.query.pages.findFirst({ where: eq(pages.slug, slug) })) {
+  while (RESERVED_PAGE_SLUGS.has(slug) || (await db.query.pages.findFirst({ where: eq(pages.slug, slug) }))) {
     slug = `${baseSlug}-${attempt++}`;
   }
 

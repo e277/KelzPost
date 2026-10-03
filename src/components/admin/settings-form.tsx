@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Category, Settings } from "@/db/schema";
 import { useToast } from "@/components/toast";
@@ -9,12 +9,6 @@ import { ImageUpload } from "./image-upload";
 import { PasswordForm } from "./password-form";
 
 type NavLink = { label: string; href: string };
-
-const ABOUT_TOOLBAR: { cmd: string; title: string; label: React.ReactNode }[] = [
-  { cmd: "bold", title: "Bold", label: <b>B</b> },
-  { cmd: "italic", title: "Italic", label: <i>I</i> },
-  { cmd: "underline", title: "Underline", label: <u>U</u> },
-];
 
 function parseNavLinks(raw: string): NavLink[] {
   try {
@@ -37,7 +31,6 @@ export function SettingsForm({
 }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
-  const aboutRef = useRef<HTMLDivElement>(null);
 
   const [blogTitle, setBlogTitle] = useState(settings.blogTitle);
   const [tagline, setTagline] = useState(settings.tagline);
@@ -51,7 +44,6 @@ export function SettingsForm({
   const [socialInstagram, setSocialInstagram] = useState(settings.socialInstagram);
   const [socialLinkedin, setSocialLinkedin] = useState(settings.socialLinkedin);
   const [socialGithub, setSocialGithub] = useState(settings.socialGithub);
-  const [aboutTitle, setAboutTitle] = useState(settings.aboutTitle);
 
   // Navigation
   const [navLinks, setNavLinks] = useState<NavLink[]>(parseNavLinks(settings.navLinks));
@@ -73,19 +65,6 @@ export function SettingsForm({
   const [tagList, setTagList] = useState(tags);
 
 
-  useEffect(() => {
-    if (aboutRef.current) aboutRef.current.innerHTML = settings.aboutContent || "";
-  }, [settings.aboutContent]);
-
-  const runAboutCmd = (cmd: string) => {
-    aboutRef.current?.focus();
-    if (cmd === "h2") document.execCommand("formatBlock", false, "h2");
-    else if (cmd === "createLink") {
-      const url = prompt("Enter URL:");
-      if (url) document.execCommand("createLink", false, url);
-    } else document.execCommand(cmd, false);
-  };
-
   const handleSave = async () => {
     const res = await fetch("/api/settings", {
       method: "PUT",
@@ -103,8 +82,6 @@ export function SettingsForm({
         socialInstagram: socialInstagram.trim(),
         socialLinkedin: socialLinkedin.trim(),
         socialGithub: socialGithub.trim(),
-        aboutTitle: aboutTitle.trim() || "About",
-        aboutContent: aboutRef.current?.innerHTML || "",
         navLinks: JSON.stringify(navLinks),
         heroTag: heroTag.trim(),
         heroLayout,
@@ -441,48 +418,6 @@ export function SettingsForm({
         </div>
 
         <PasswordForm />
-
-        {/* About Page */}
-        <div className="editor-card settings-grid--full">
-          <div className="editor-card__header">About Page Content</div>
-          <div className="editor-card__body">
-            <div className="form-group">
-              <label htmlFor="aboutTitle">Page Title</label>
-              <input type="text" id="aboutTitle" placeholder="About" value={aboutTitle} onChange={(e) => setAboutTitle(e.target.value)} />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Content</label>
-              <div className="editor-toolbar">
-                {ABOUT_TOOLBAR.map((b) => (
-                  <button key={b.cmd} type="button" className="toolbar-btn" title={b.title} onMouseDown={(e) => { e.preventDefault(); runAboutCmd(b.cmd); }}>
-                    {b.label}
-                  </button>
-                ))}
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Heading 2" onMouseDown={(e) => { e.preventDefault(); runAboutCmd("h2"); }}>H2</button>
-                <button type="button" className="toolbar-btn" title="Bullet List" onMouseDown={(e) => { e.preventDefault(); runAboutCmd("insertUnorderedList"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M4 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM7 4h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2z" />
-                  </svg>
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Insert Link" onMouseDown={(e) => { e.preventDefault(); runAboutCmd("createLink"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Clear Formatting" onMouseDown={(e) => { e.preventDefault(); runAboutCmd("removeFormat"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M6 4l8 12M4 4h12" />
-                  </svg>
-                </button>
-              </div>
-              <div ref={aboutRef} className="editor-area" contentEditable data-placeholder="Write something about yourself or this blog…" style={{ minHeight: 200 }} />
-            </div>
-          </div>
-        </div>
-
       </div>
 
       <div style={{ marginTop: 24 }}>
