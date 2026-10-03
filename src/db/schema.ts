@@ -126,6 +126,31 @@ export const postTags = pgTable(
   ]
 );
 
+// Reader comments. New ones wait in the admin's queue ("pending") until approved;
+// only "approved" comments are shown on the post. Replies point at their parent.
+export const comments = pgTable(
+  "Comment",
+  {
+    id: id(),
+    postId: text("postId").notNull(),
+    parentId: text("parentId"),
+    authorName: text("authorName").notNull(),
+    // Optional and never shown publicly; lets the admin reach the commenter.
+    authorEmail: text("authorEmail").notNull().default(""),
+    content: text("content").notNull(),
+    status: text("status").notNull().default("pending"),
+    // Written by the signed-in admin (shown with an "Author" badge).
+    isAuthor: boolean("isAuthor").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("Comment_postId_status_createdAt_idx").on(t.postId, t.status, t.createdAt),
+    index("Comment_status_createdAt_idx").on(t.status, t.createdAt),
+    foreignKey({ name: "Comment_postId_fkey", columns: [t.postId], foreignColumns: [posts.id] }).onDelete("cascade"),
+    foreignKey({ name: "Comment_parentId_fkey", columns: [t.parentId], foreignColumns: [t.id] }).onDelete("cascade"),
+  ]
+);
+
 // Newsletter subscribers. A signup stays "pending" until the address is
 // confirmed from the email link; "unsubscribed" rows are kept so the address
 // isn't emailed again. The token identifies the subscriber in confirm and
@@ -184,5 +209,6 @@ export type Page = typeof pages.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
+export type Comment = typeof comments.$inferSelect;
 export type Subscriber = typeof subscribers.$inferSelect;
 export type PostWithCategory = Post & { category: Category | null };

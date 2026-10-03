@@ -26,8 +26,15 @@
     {
       "idx": 3,
       "version": "7",
-      "when": 1791040618141,
-      "tag": "0003_comments",
+      "when": 1791040639559,
+      "tag": "0003_newsletter",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791043354775,
+      "tag": "0004_comments",
       "breakpoints": true
     }
   ]
