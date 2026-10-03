@@ -4,7 +4,7 @@ import type { PostSummary } from "@/lib/posts";
 import { getSiteText } from "@/lib/site-text";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
-import { PostCard } from "./post-card";
+import { PostListing } from "./post-listing";
 import { AuthorAvatar } from "./author-avatar";
 
 const CRUMBS = { Tag: "Tags", Author: "Authors" } as const;

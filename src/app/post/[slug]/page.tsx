@@ -240,7 +240,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             <h2 className="related__title">{text.keepReading}</h2>
             <div className="posts-grid related__grid">
               {related.map((p) => (
-                <PostCard key={p.id} post={toPostSummary(p, settings)} categories={categories} />
+                <PostCard key={p.id} post={toPostSummary(p, settings)} categories={categories} readMore={text.readMore} />
               ))}
             </div>
           </section>

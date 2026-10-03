@@ -73,7 +73,8 @@ managed from the built-in admin panel. No content is hardcoded.
 - Categories and tags (up to 10 of each per post), picked in the editor's Details card
   from a list as you type, or typed in new and added with Enter. A post can be in
   several categories: the first is shown on its card, and it is listed under each one
-  on the home page. Only admins can create a new category from the editor
+  on the home page. Only admins can create a new category from the editor. There is no
+  separate Categories page: categories and tags are created here, while writing
 - Per-post SEO: meta title, meta description and social share image, with a search
   result preview. Left empty, they fall back to the title, excerpt and cover image
 - Author: each post is credited to the team member who wrote it (admins can change
@@ -95,10 +96,6 @@ managed from the built-in admin panel. No content is hardcoded.
   navigation** in its editor to leave it out), and its link follows the page's title and
   address and goes away when the page is deleted. The menu only links to the blog's own
   pages. New sites start with Home and About in the menu
-- Categories & Tags (admins only): add, rename, reorder and delete categories (they
-  become the home page's filters, in that order), and add, rename and delete tags. Each
-  shows how many posts use it, and deleting one takes it off those posts without
-  deleting the posts
 - Configurations (admins only, formerly Settings): how the public site looks: title,
   colors, homepage hero and posts layout, social links and footer, plus **Site text**,
   the wording of buttons, headings and messages around the site (a blank box uses the
@@ -331,7 +328,7 @@ src/
     admin/                    # Admin panel (protected by src/proxy.ts)
       login/                  # Login and first-run setup
       posts/[id]/preview/     # Draft preview
-      pages/, categories/     # Pages and header menu; categories and tags
+      pages/                  # Pages and header menu
       comments/, newsletter/  # Comment moderation, newsletter sending
       configurations/         # How the public site looks (/admin/settings redirects here)
       team/, profile/         # Team management, your own profile and password
@@ -370,7 +367,7 @@ drizzle.config.ts             # drizzle-kit configuration
   away. Public queries should filter with `livePosts()` (`src/lib/posts.ts`) so drafts and
   scheduled posts stay hidden.
 - Admin pages each own one job (posts on the dashboard, pages and the header menu under
-  Pages, categories and tags under Categories, how the public site looks under Configurations, your
+  Pages, categories and tags in the post editor, how the public site looks under Configurations, your
   own name and password under Your Profile). Build new admin screens from
   `src/components/admin/ui.tsx` (`AdminCard`, `Field`, `ConfirmDialog`) and call the API
   with `apiSend` from `src/lib/admin-api.ts`, so every page looks and handles errors the

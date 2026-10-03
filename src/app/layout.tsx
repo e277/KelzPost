@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import localFont from "next/font/local";
 import { getSettings, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const inter = Inter({
+// Inter and Playfair Display (Latin, variable weight) are kept in ./fonts rather
+// than fetched from Google Fonts while building, so a build never fails because
+// that download did. Both are under the SIL Open Font License (see ./fonts).
+const inter = localFont({
+  src: "./fonts/inter-latin-variable.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: "100 900",
+  display: "swap",
 });
 
-const playfair = Playfair_Display({
+const playfair = localFont({
+  src: "./fonts/playfair-display-latin-variable.woff2",
   variable: "--font-playfair",
-  subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: "400 900",
+  display: "swap",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
