@@ -1,13 +1,14 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Category, Settings } from "@/db/schema";
 import type { PostSummary } from "@/lib/posts";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { PostCard } from "./post-card";
 
-const CRUMBS = { Category: "Categories", Tag: "Tags", Author: "Authors" } as const;
+const CRUMBS = { Blog: "Blog", Tag: "Tags", Author: "Authors" } as const;
 
-/** Shared layout for category, tag and author archives: banner, post grid and pagination. */
+/** Shared layout for the Blog page and the tag and author archives: banner, post grid and pagination. */
 export function ArchiveListing({
   settings,
   categories,
@@ -16,6 +17,7 @@ export function ArchiveListing({
   bio,
   avatar,
   basePath,
+  filters,
   posts,
   total,
   page,
@@ -28,13 +30,16 @@ export function ArchiveListing({
   /** Author archives only. */
   bio?: string;
   avatar?: string;
+  /** Address of page 1; may already carry a query string. */
   basePath: string;
+  /** Shown between the banner and the posts, like the Blog page's category filters. */
+  filters?: ReactNode;
   posts: PostSummary[];
   total: number;
   page: number;
   pageCount: number;
 }) {
-  const href = (n: number) => (n <= 1 ? basePath : `${basePath}?page=${n}`);
+  const href = (n: number) => (n <= 1 ? basePath : `${basePath}${basePath.includes("?") ? "&" : "?"}page=${n}`);
 
   return (
     <>
@@ -56,6 +61,8 @@ export function ArchiveListing({
           </p>
         </div>
       </section>
+
+      {filters}
 
       <main className="blog-main">
         {posts.length === 0 ? (

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Category, Post, Tag } from "@/db/schema";
 import type { Byline, TocItem } from "@/lib/posts";
-import { formatDate, categoryBadgeClass, readingTime, slugify } from "@/lib/utils";
+import { formatDate, categoryBadgeClass, readingTime, categoryHref } from "@/lib/utils";
 
 type PostWithCategory = Post & { category: Category | null };
 
@@ -33,7 +33,7 @@ export function PostArticle({
       <header className="post-header">
         {post.category && (
           <Link
-            href={`/category/${slugify(post.category.name)}`}
+            href={categoryHref(post.category.name)}
             className={`badge ${categoryBadgeClass(post.category.name, categories)}`}
           >
             {post.category.name}

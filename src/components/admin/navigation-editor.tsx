@@ -117,7 +117,7 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
           />
           <input
             type="text"
-            placeholder="Other link (e.g. /category/news or https://…)"
+            placeholder="Other link (e.g. /tag/news or https://…)"
             aria-label="Link address"
             value={newHref}
             onChange={(e) => setNewHref(e.target.value)}

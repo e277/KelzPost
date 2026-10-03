@@ -243,6 +243,8 @@ ul { list-style: none; }
 }
 .filter-btn:hover { border-color: var(--gold); color: var(--gold); }
 .filter-btn.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
+a.filter-btn { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.filter-btn__count { font-weight: 500; opacity: .7; }
 
 /* ── POST GRID ── */
 .blog-main {

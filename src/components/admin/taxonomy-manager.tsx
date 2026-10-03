@@ -51,7 +51,7 @@ export function TaxonomyManager({ categories, tags }: { categories: Category[]; 
       <div className="taxonomy-grid">
         <AdminCard title="Categories">
           <p className="settings-section-note">
-            Each post has one category. Categories appear as filters on the blog and in the post editor&apos;s category dropdown.
+            Each post has one category. Categories appear as filters along the top of the Blog page and in the post editor&apos;s category dropdown.
           </p>
           <ChipList items={cats} empty="No categories yet. Add one below." onRemove={removeCategory} />
           <div className="tag-add-row">

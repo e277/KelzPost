@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getSettings } from "@/lib/site";
 import { searchPosts } from "@/lib/search";
-import { formatDate, slugify } from "@/lib/utils";
+import { categoryHref, formatDate } from "@/lib/utils";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -87,7 +87,7 @@ export default async function SearchPage({ searchParams }: Props) {
                     {r.category && (
                       <>
                         {" · "}
-                        <Link href={`/category/${slugify(r.category.name)}`}>{r.category.name}</Link>
+                        <Link href={categoryHref(r.category.name)}>{r.category.name}</Link>
                       </>
                     )}
                     {` · ${r.readingMinutes} min read · By ${r.byline.name}`}

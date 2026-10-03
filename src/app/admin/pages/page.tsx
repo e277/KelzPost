@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { NavigationEditor } from "@/components/admin/navigation-editor";
 import { formatDate } from "@/lib/utils";
-import { ABOUT_PAGE_ID } from "@/lib/nav-links";
+import { ABOUT_PAGE_ID, BLOG_PAGE_ID } from "@/lib/nav-links";
 import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,6 @@ export default async function AdminPagesPage() {
 
   return (
     <AdminShell
-     
       active="pages"
       title="Pages"
       actions={
@@ -34,6 +33,13 @@ export default async function AdminPagesPage() {
           meta="/about · Shows your author photo, name and bio above the content"
           editHref="/admin/pages/about"
           viewHref="/about"
+        />
+        <PageRow
+          title={<>Blog <span className="badge badge--gray">Built-in</span></>}
+          meta="/blog · Every post, with your categories as filters along the top"
+          editHref="/admin/categories"
+          editLabel="Categories"
+          viewHref="/blog"
         />
         {pages.map((page) => (
           <PageRow
@@ -54,6 +60,7 @@ export default async function AdminPagesPage() {
       <NavigationEditor
         navLinks={settings.navLinks}
         pages={[
+          { pageId: BLOG_PAGE_ID, label: "Blog", href: "/blog" },
           { pageId: ABOUT_PAGE_ID, label: settings.aboutTitle || "About", href: "/about" },
           ...pages.map((p) => ({ pageId: p.id, label: p.title, href: `/${p.slug}` })),
         ]}
@@ -62,7 +69,19 @@ export default async function AdminPagesPage() {
   );
 }
 
-function PageRow({ title, meta, editHref, viewHref }: { title: ReactNode; meta: string; editHref: string; viewHref: string }) {
+function PageRow({
+  title,
+  meta,
+  editHref,
+  editLabel = "Edit",
+  viewHref,
+}: {
+  title: ReactNode;
+  meta: string;
+  editHref: string;
+  editLabel?: string;
+  viewHref: string;
+}) {
   return (
     <div className="dash-post-row">
       <div className="dash-post-row__info">
@@ -76,7 +95,7 @@ function PageRow({ title, meta, editHref, viewHref }: { title: ReactNode; meta: 
           View
         </a>
         <Link href={editHref} className="btn btn--ghost btn--sm">
-          Edit
+          {editLabel}
         </Link>
       </div>
     </div>
