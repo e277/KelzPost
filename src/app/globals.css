@@ -34,7 +34,13 @@ body {
   color: var(--gray-800);
   background: var(--white);
   line-height: 1.65;
+  /* Keeps the footer at the bottom of the window on short pages. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
+body > main { flex: 1 0 auto; }
 img { display: block; max-width: 100%; }
 a { text-decoration: none; color: inherit; }
 ul { list-style: none; }
@@ -669,8 +675,11 @@ ul { list-style: none; }
 .site-footer {
   background: var(--navy);
   color: rgba(255,255,255,.7);
-  margin-top: 40px;
+  margin-top: auto;
 }
+/* Space above the footer, kept as a sibling margin so it still sits at the bottom. */
+body > main + .site-footer, body > .blog-main + .site-footer { margin-top: 40px; }
+body > main { margin-bottom: 0; }
 .site-footer__inner {
   max-width: 1200px; margin: 0 auto; padding: 48px 24px 28px;
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -1094,3 +1103,196 @@ button.dash-stat:hover { box-shadow: var(--shadow-md); transform: translateY(-1p
   .post-nav__link--next { grid-column: 1; }
   .post-footer { flex-direction: column; align-items: flex-start; gap: 16px; }
 }
+
+/* ═══════════════════════════════════════
+   PUBLIC — HEADER EXTRAS, ARCHIVES, POST EXTRAS
+═══════════════════════════════════════ */
+.blog-nav__end { display: flex; align-items: center; gap: 8px; }
+.theme-toggle {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.08); color: rgba(255,255,255,.8);
+  border: none; cursor: pointer; transition: var(--transition);
+}
+.theme-toggle:hover { background: rgba(255,255,255,.16); color: var(--white); }
+.theme-toggle__sun { display: none; }
+html[data-theme="dark"] .theme-toggle__sun { display: block; }
+html[data-theme="dark"] .theme-toggle__moon { display: none; }
+
+a.badge { transition: var(--transition); }
+a.badge:hover { filter: brightness(.95); box-shadow: 0 0 0 2px rgba(0,0,0,.06); }
+
+.archive-hero {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-md) 100%);
+  padding: 48px 0 44px;
+}
+.archive-hero__inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.archive-hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  color: var(--white); line-height: 1.2; margin-bottom: 8px;
+}
+.archive-hero__count { color: rgba(255,255,255,.65); font-size: .95rem; }
+.breadcrumbs { display: flex; gap: 8px; font-size: .82rem; color: rgba(255,255,255,.55); margin-bottom: 18px; }
+.breadcrumbs a { color: rgba(255,255,255,.8); }
+.breadcrumbs a:hover { color: var(--gold-lt); }
+
+.pagination {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  margin-top: 48px;
+}
+.pagination__link {
+  padding: 9px 18px; border-radius: 100px;
+  border: 1.5px solid var(--gray-200);
+  font-size: .85rem; font-weight: 600; color: var(--navy);
+  transition: var(--transition);
+}
+a.pagination__link:hover { border-color: var(--gold); color: var(--gold); }
+.pagination__link.is-disabled { opacity: .4; }
+.pagination__status { font-size: .85rem; color: var(--gray-400); }
+
+.post-toc {
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius-sm);
+  padding: 16px 22px;
+  margin-bottom: 40px;
+  background: var(--off-white);
+}
+.post-toc summary {
+  cursor: pointer; font-size: .78rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--navy);
+}
+.post-toc ol { list-style: none; margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.post-toc a { font-size: .92rem; color: var(--gray-600); }
+.post-toc a:hover { color: var(--gold); }
+.post-toc__sub { padding-left: 16px; }
+.post-body h2[id], .post-body h3[id] { scroll-margin-top: 88px; }
+
+.post-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 40px; }
+.post-tags a {
+  display: inline-block; padding: 5px 14px; border-radius: 100px;
+  background: var(--gray-100); color: var(--gray-600);
+  font-size: .82rem; font-weight: 600; transition: var(--transition);
+}
+.post-tags a:hover { background: var(--navy); color: var(--white); }
+
+.author-box {
+  display: flex; gap: 20px; align-items: flex-start;
+  margin-top: 48px; padding: 28px;
+  border: 1px solid var(--gray-200); border-radius: var(--radius-md);
+  background: var(--off-white);
+}
+.author-box__avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.author-box__avatar--placeholder {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--navy); color: var(--white);
+  font-family: var(--font-display); font-size: 1.8rem; font-weight: 700;
+}
+.author-box__label { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-400); }
+.author-box__name { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.author-box__bio { font-size: .92rem; color: var(--gray-600); margin-bottom: 10px; }
+.author-box__link { font-size: .85rem; font-weight: 700; color: var(--gold); }
+.author-box__link:hover { color: var(--navy); }
+
+/* Admin: search result preview in the post editor */
+.seo-preview {
+  border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 16px; background: var(--white);
+}
+.seo-preview__url { font-size: .72rem; color: var(--green); overflow-wrap: anywhere; }
+.seo-preview__title { font-size: .95rem; color: #1a0dab; font-weight: 500; line-height: 1.3; margin: 2px 0 4px; overflow-wrap: anywhere; }
+.seo-preview__desc { font-size: .78rem; color: var(--gray-600); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+@media (max-width: 768px) {
+  .blog-nav__end { gap: 4px; }
+  .author-box { flex-direction: column; padding: 22px; }
+  .pagination { gap: 12px; }
+}
+
+/* ═══════════════════════════════════════
+   PUBLIC — DARK MODE
+   Applied via <html data-theme="dark">, which is never set on admin pages.
+═══════════════════════════════════════ */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --dk-bg: #0e131d;
+  --dk-surface: #161d2b;
+  --dk-raised: #1d2637;
+  --dk-border: #2a3448;
+  --dk-text: #d9e0ea;
+  --dk-muted: #98a4b6;
+  --dk-heading: #f2f5f9;
+}
+html[data-theme="dark"] body { background: var(--dk-bg); color: var(--dk-text); }
+html[data-theme="dark"] .blog-header { background: #0b1220; box-shadow: 0 1px 0 var(--dk-border); }
+html[data-theme="dark"] .blog-hero,
+html[data-theme="dark"] .archive-hero { background: linear-gradient(135deg, #0b1220 0%, var(--dk-surface) 100%); }
+html[data-theme="dark"] .site-footer { background: #0b1220; border-top: 1px solid var(--dk-border); }
+html[data-theme="dark"] .blog-search input {
+  background: var(--dk-surface); border-color: var(--dk-border); color: var(--dk-text);
+}
+html[data-theme="dark"] .filter-btn { background: var(--dk-surface); border-color: var(--dk-border); color: var(--dk-muted); }
+html[data-theme="dark"] .filter-btn.active { background: var(--gold); border-color: var(--gold); color: #fff; }
+html[data-theme="dark"] .post-card { background: var(--dk-surface); border-color: var(--dk-border); }
+html[data-theme="dark"] .post-card__image { background: var(--dk-raised); }
+html[data-theme="dark"] .post-card__footer { border-top-color: var(--dk-border); }
+html[data-theme="dark"] .post-card__excerpt,
+html[data-theme="dark"] .post-lede,
+html[data-theme="dark"] .about-bio,
+html[data-theme="dark"] .author-box__bio,
+html[data-theme="dark"] .post-toc a { color: var(--dk-muted); }
+html[data-theme="dark"] .post-card__title,
+html[data-theme="dark"] .post-title,
+html[data-theme="dark"] .post-body h2,
+html[data-theme="dark"] .post-body h3,
+html[data-theme="dark"] .post-body strong,
+html[data-theme="dark"] .post-nav__title,
+html[data-theme="dark"] .post-footer__back,
+html[data-theme="dark"] .related__title,
+html[data-theme="dark"] .about-title,
+html[data-theme="dark"] .about-body h2,
+html[data-theme="dark"] .not-found__title,
+html[data-theme="dark"] .author-box__name,
+html[data-theme="dark"] .post-toc summary,
+html[data-theme="dark"] .pagination__link { color: var(--dk-heading); }
+html[data-theme="dark"] .post-body,
+html[data-theme="dark"] .about-body { color: var(--dk-text); }
+html[data-theme="dark"] .post-back:hover,
+html[data-theme="dark"] .post-body a:hover,
+html[data-theme="dark"] .post-card__read-more:hover,
+html[data-theme="dark"] .author-box__link:hover { color: var(--dk-heading); }
+html[data-theme="dark"] .post-body blockquote,
+html[data-theme="dark"] .post-toc,
+html[data-theme="dark"] .author-box { background: var(--dk-surface); border-color: var(--dk-border); color: var(--dk-muted); }
+html[data-theme="dark"] .post-toc { border-left-color: var(--gold); }
+html[data-theme="dark"] .post-body code { background: var(--dk-raised); }
+html[data-theme="dark"] .post-body pre code { background: none; }
+html[data-theme="dark"] .post-body hr,
+html[data-theme="dark"] .post-footer,
+html[data-theme="dark"] .related { border-color: var(--dk-border); }
+html[data-theme="dark"] .post-body th,
+html[data-theme="dark"] .post-body td,
+html[data-theme="dark"] .post-nav__link,
+html[data-theme="dark"] .pagination__link { border-color: var(--dk-border); }
+html[data-theme="dark"] .share__btn { background: var(--dk-surface); border-color: var(--dk-border); color: var(--dk-muted); }
+html[data-theme="dark"] .share__btn:hover { border-color: var(--gold); color: var(--dk-heading); }
+html[data-theme="dark"] .post-tags a,
+html[data-theme="dark"] .badge--gray { background: var(--dk-raised); color: var(--dk-muted); }
+html[data-theme="dark"] .post-tags a:hover { background: var(--gold); color: #fff; }
+html[data-theme="dark"] .badge--navy { background: #1e3a66; color: #cfe0ff; }
+html[data-theme="dark"] .badge--gold { background: #3d2f12; color: #f3cf7f; }
+html[data-theme="dark"] .badge--green { background: #173a2a; color: #9fe0bd; }
+html[data-theme="dark"] .about-avatar-placeholder,
+html[data-theme="dark"] .author-box__avatar--placeholder { background: var(--dk-raised); }
+/* The accent colour is user-chosen and may be dark; lighten it wherever it is used as text. */
+html[data-theme="dark"] .blog-logo__text span,
+html[data-theme="dark"] .post-card__read-more,
+html[data-theme="dark"] .post-card__title a:hover,
+html[data-theme="dark"] .post-nav__dir,
+html[data-theme="dark"] .author-box__link,
+html[data-theme="dark"] .post-body a,
+html[data-theme="dark"] .post-toc a:hover,
+html[data-theme="dark"] .about-name,
+html[data-theme="dark"] .not-found__code,
+html[data-theme="dark"] a.pagination__link:hover { color: color-mix(in srgb, var(--gold) 45%, #ffffff); }

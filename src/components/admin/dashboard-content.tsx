@@ -176,7 +176,11 @@ export function DashboardContent({
                     </td>
                     <td>{post.category ? <span className="badge badge--gray">{post.category.name}</span> : "—"}</td>
                     <td>
-                      <span className={`badge ${post.status === "published" ? "badge--green" : "badge--gold"}`}>{post.status}</span>
+                      {post.status === "published" && post.publishedAt && new Date(post.publishedAt) > new Date() ? (
+                        <span className="badge badge--navy" title={`Goes live ${new Date(post.publishedAt).toLocaleString()}`}>scheduled</span>
+                      ) : (
+                        <span className={`badge ${post.status === "published" ? "badge--green" : "badge--gold"}`}>{post.status}</span>
+                      )}
                     </td>
                     <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }}>
                       {formatDate(sort === "created" ? post.createdAt : post.updatedAt)}

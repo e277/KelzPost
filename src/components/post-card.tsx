@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Category, Post } from "@/db/schema";
-import { formatDate, categoryBadgeClass, readingTime, summarize } from "@/lib/utils";
+import { formatDate, categoryBadgeClass, readingTime, slugify, summarize } from "@/lib/utils";
 
 type PostWithCategory = Post & { category: Category | null };
 
@@ -33,9 +33,12 @@ export function PostCard({
           </div>
         )}
         {post.category && (
-          <span className={`post-card__category badge ${categoryBadgeClass(post.category.name, categories)}`}>
+          <Link
+            href={`/category/${slugify(post.category.name)}`}
+            className={`post-card__category badge ${categoryBadgeClass(post.category.name, categories)}`}
+          >
             {post.category.name}
-          </span>
+          </Link>
         )}
       </div>
       <div className="post-card__body">

@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { livePosts } from "@/lib/posts";
 import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -11,7 +12,7 @@ export default async function HomePage() {
 
   const [posts, categories] = await Promise.all([
     db.query.posts.findMany({
-      where: (p, { eq }) => eq(p.status, "published"),
+      where: livePosts(),
       with: { category: true },
       orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
     }),

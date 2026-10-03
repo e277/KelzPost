@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Settings } from "@/db/schema";
 import { NavLinks } from "./nav-links";
+import { ThemeToggle } from "./theme-toggle";
 
 type NavLink = { label: string; href: string };
 
@@ -29,7 +30,10 @@ export function SiteHeader({ settings }: { settings: Settings }) {
             <span>{last}</span>
           </div>
         </Link>
-        <NavLinks links={navLinks} />
+        <div className="blog-nav__end">
+          <NavLinks links={navLinks} />
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   );
