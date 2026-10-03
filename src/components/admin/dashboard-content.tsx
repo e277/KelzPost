@@ -185,7 +185,7 @@ export function DashboardContent({
           </div>
         ) : (
           <div className="posts-table-scroll">
-            <table className="posts-table">
+            <table className="posts-table posts-table--cards">
               <thead>
                 <tr>
                   <th>Title</th>
@@ -207,22 +207,22 @@ export function DashboardContent({
                         </p>
                       </div>
                     </td>
-                    <td>{post.category ? <span className="badge badge--gray">{post.category.name}</span> : "—"}</td>
-                    <td>
+                    <td data-label="Category">{post.category ? <span className="badge badge--gray">{post.category.name}</span> : "—"}</td>
+                    <td data-label="Status">
                       {post.status === "published" && post.publishedAt && new Date(post.publishedAt) > new Date() ? (
                         <span className="badge badge--navy" title={`Goes live ${new Date(post.publishedAt).toLocaleString()}`}>scheduled</span>
                       ) : (
                         <span className={`badge ${post.status === "published" ? "badge--green" : "badge--gold"}`}>{post.status}</span>
                       )}
                     </td>
-                    <td className="posts-table__views">
+                    <td className="posts-table__views" data-label="Views">
                       {post.views.toLocaleString()}
                       {post.views > 0 && <small>{post.recentViews.toLocaleString()} in 30 days</small>}
                     </td>
-                    <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }}>
+                    <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }} data-label={sort === "created" ? "Created" : "Last edited"}>
                       {formatDate(sort === "created" ? post.createdAt : post.updatedAt)}
                     </td>
-                    <td>
+                    <td className="posts-table__actions-cell">
                       <div className="posts-table__actions">
                         <Link href={`/admin/posts/${post.id}`} className="btn btn--ghost btn--sm">
                           Edit
