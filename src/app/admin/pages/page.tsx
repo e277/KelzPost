@@ -5,6 +5,7 @@ import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { NavigationEditor } from "@/components/admin/navigation-editor";
 import { formatDate } from "@/lib/utils";
+import { ABOUT_PAGE_ID } from "@/lib/nav-links";
 import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export default async function AdminPagesPage() {
         ))}
         {pages.length === 0 && (
           <div className="dash-post-row dash-post-row--hint">
-            <span>Add more pages, such as Contact or Privacy, with New Page. Add them to your header under Site Navigation below.</span>
+            <span>Add more pages, such as Contact or Privacy, with New Page. Each new page is added to your header menu too, unless you untick Show in navigation.</span>
           </div>
         )}
       </div>
@@ -53,8 +54,8 @@ export default async function AdminPagesPage() {
       <NavigationEditor
         navLinks={settings.navLinks}
         pages={[
-          { label: settings.aboutTitle || "About", href: "/about" },
-          ...pages.map((p) => ({ label: p.title, href: `/${p.slug}` })),
+          { pageId: ABOUT_PAGE_ID, label: settings.aboutTitle || "About", href: "/about" },
+          ...pages.map((p) => ({ pageId: p.id, label: p.title, href: `/${p.slug}` })),
         ]}
       />
     </AdminShell>

@@ -16,7 +16,7 @@ import { AdminCard, ConfirmDialog, Field } from "./ui";
 // author's photo, name and bio above its content. All of it is stored in settings.
 type AboutPage = { title: string; content: string; authorName: string; authorBio: string; authorAvatar: string };
 
-export function PageEditor({ page, about }: { page: Page | null; about?: AboutPage }) {
+export function PageEditor({ page, about, inNav = true }: { page: Page | null; about?: AboutPage; inNav?: boolean }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
   const { editor, insertImages } = useRichTextEditor({
@@ -33,6 +33,8 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
   const [authorName, setAuthorName] = useState(about?.authorName || "");
   const [authorBio, setAuthorBio] = useState(about?.authorBio || "");
   const [authorAvatar, setAuthorAvatar] = useState(about?.authorAvatar || "");
+  // The page's header link is created, renamed and removed along with the page.
+  const [showInNav, setShowInNav] = useState(inNav);
 
   const save = async () => {
     if (!title.trim()) { showToast("Please add a title.", "error"); return; }
@@ -48,6 +50,7 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
           authorName: authorName.trim() || "Author",
           authorBio: authorBio.trim(),
           authorAvatar,
+          aboutInNav: showInNav,
         },
         "Failed to save page."
       );
@@ -57,7 +60,7 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
       return;
     }
 
-    const payload = { title: title.trim(), slug: slug.trim(), content };
+    const payload = { title: title.trim(), slug: slug.trim(), content, showInNav };
     const res = await apiSend<{ id: string }>(page ? `/api/pages/${page.id}` : "/api/pages", page ? "PUT" : "POST", payload, "Failed to save page.");
     if (!res.ok) return showToast(res.error, "error");
 
@@ -112,6 +115,10 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
 
         <div className="sidebar-panel">
           <AdminCard title="Actions">
+            <label className="checkbox-row">
+              <input type="checkbox" checked={showInNav} onChange={(e) => setShowInNav(e.target.checked)} />
+              Show in the site&apos;s navigation
+            </label>
             <div className="editor-actions">
               <button type="button" className="btn btn--primary btn--sm" onClick={save}>
                 Save Page
