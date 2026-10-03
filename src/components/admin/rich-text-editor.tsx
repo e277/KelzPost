@@ -7,6 +7,7 @@ import Image from "@tiptap/extension-image";
 import { TableKit } from "@tiptap/extension-table";
 import Youtube from "@tiptap/extension-youtube";
 import { Placeholder } from "@tiptap/extensions";
+import { isImageFile } from "@/lib/image";
 
 /** Languages offered for code blocks; public posts are highlighted on the server (see lib/highlight). */
 export const CODE_LANGUAGES: { value: string; label: string }[] = [
@@ -45,7 +46,7 @@ type Options = {
   onError?: (message: string) => void;
 };
 
-const imageFiles = (list: FileList | null | undefined) => [...(list ?? [])].filter((f) => f.type.startsWith("image/"));
+const imageFiles = (list: FileList | null | undefined) => [...(list ?? [])].filter(isImageFile);
 
 /**
  * Creates the rich text editor used for posts and pages. Pasted or dropped

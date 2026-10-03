@@ -124,6 +124,10 @@ managed from the built-in admin panel. No content is hardcoded.
    Uploaded images go to Blob from then on, and the build moves any images already saved
    in the database over to Blob (`npm run images:move`). Until a Blob store is connected,
    uploads still work but are saved inside the database, which makes pages heavier.
+   If Vercel asks, pick **public** access for the store, since blog images are public.
+   `/api/health` reports `imageStorage`: `connected`, `not set up`, or the error Blob
+   returned. If Blob fails, uploads fall back to saving inside the database rather than
+   failing.
 
 > Every deployment, previews included, runs migrations against the `DATABASE_URL` it is
 > given. If you don't want previews to touch production data, enable Neon's preview
@@ -316,8 +320,10 @@ drizzle.config.ts             # drizzle-kit configuration
 
 - Images (covers, avatars, inline images) are downscaled in the browser and uploaded to
   Vercel Blob through `/api/uploads`; only their URLs are saved in the database. Without a
-  Blob store they fall back to data URLs in the database, where each save must stay under
-  Vercel's 4.5 MB request limit.
+  Blob store (or if Blob returns an error) they fall back to data URLs in the database,
+  where each save must stay under Vercel's 4.5 MB request limit. Files without a MIME type
+  are recognised by their extension, and HEIC photos are converted to WebP or JPEG where
+  the browser can read them.
 - Post HTML is cleaned when it's saved: only the editor's own formatting, images, tables
   and YouTube/Vimeo embeds are kept, so a writer can't add scripts or other embeds. Custom
   pages and the About page can only be edited by admins and are rendered as written.
