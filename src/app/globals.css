@@ -1643,3 +1643,20 @@ html[data-theme="dark"] .post-body th { background: var(--dk-raised); }
   font-family: var(--font-body);
   font-size: .85rem;
 }
+
+/* ── Editor: version history and unsaved-work banner ── */
+.editor-card__toggle {
+  width: 100%; display: flex; justify-content: space-between; align-items: center;
+  background: none; border: none; border-bottom: 1px solid var(--gray-200);
+  font-family: var(--font-body); text-align: left; cursor: pointer;
+}
+.editor-card__toggle[aria-expanded="false"] { border-bottom: none; }
+.editor-card__toggle span { font-size: 1.1rem; color: var(--gray-400); }
+.revision-list { list-style: none; display: grid; gap: 12px; }
+.revision-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.revision-list strong { display: block; font-size: .84rem; color: var(--navy); }
+.revision-list span { display: block; font-size: .75rem; color: var(--gray-400); }
+.revision-list .btn--sm { padding: 5px 10px; font-size: .76rem; flex-shrink: 0; }
+.revision-list__refresh { margin-top: 14px; font-size: .8rem; }
+.editor-backup { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.editor-backup__actions { display: flex; gap: 8px; }

@@ -36,6 +36,8 @@ export const CODE_LANGUAGES: { value: string; label: string }[] = [
 type Options = {
   content: string;
   placeholder: string;
+  /** Called once the editor is ready in the browser. */
+  onCreate?: (editor: Editor) => void;
   /** Called after every change. */
   onUpdate?: (editor: Editor) => void;
   /** Uploads a pasted or dropped image and resolves to its URL. */
@@ -49,11 +51,11 @@ const imageFiles = (list: FileList | null | undefined) => [...(list ?? [])].filt
  * Creates the rich text editor used for posts and pages. Pasted or dropped
  * images are uploaded and inserted where they land.
  */
-export function useRichTextEditor({ content, placeholder, onUpdate, uploadImage, onError }: Options) {
+export function useRichTextEditor({ content, placeholder, onCreate, onUpdate, uploadImage, onError }: Options) {
   // The editor is created once; keep the latest callbacks in a ref so it always calls them.
-  const callbacks = useRef({ onUpdate, uploadImage, onError });
+  const callbacks = useRef({ onCreate, onUpdate, uploadImage, onError });
   useEffect(() => {
-    callbacks.current = { onUpdate, uploadImage, onError };
+    callbacks.current = { onCreate, onUpdate, uploadImage, onError };
   });
 
   const insertImages = async (editor: Editor, files: File[], pos?: number) => {
@@ -109,6 +111,7 @@ export function useRichTextEditor({ content, placeholder, onUpdate, uploadImage,
     },
     onCreate: ({ editor }) => {
       editorRef.current = editor;
+      callbacks.current.onCreate?.(editor);
     },
     onUpdate: ({ editor }) => callbacks.current.onUpdate?.(editor),
   });
