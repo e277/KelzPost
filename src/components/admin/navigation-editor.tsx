@@ -6,18 +6,14 @@ import { useToast } from "@/components/toast";
 import { apiSend } from "@/lib/admin-api";
 import { AdminCard } from "./ui";
 
-type NavLink = { label: string; href: string };
+import { parseNavLinks, type NavLink } from "@/lib/nav-links";
 
-function parseNavLinks(raw: string): NavLink[] {
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.filter((l) => l.label && l.href);
-  } catch {}
-  return [{ label: "Home", href: "/" }, { label: "About", href: "/about" }];
-}
+type PageOption = { pageId: string; label: string; href: string };
 
 // The site header's links, edited on Admin → Pages next to the pages they point to.
-export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; pages: NavLink[] }) {
+// Links to pages are created with the page (its "Show in navigation" option) and
+// follow its title and address; links typed here are for anything else.
+export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; pages: PageOption[] }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
   const [navLinks, setNavLinks] = useState<NavLink[]>(parseNavLinks(raw));
@@ -31,8 +27,13 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
     setDirty(true);
   };
 
+  const addPage = (p: PageOption) => update([...navLinks, { label: p.label, href: p.href, pageId: p.pageId }]);
+
   const addLink = (label: string, href: string) => {
     if (!label.trim() || !href.trim()) return;
+    // A typed address of one of our pages becomes that page's link.
+    const page = pages.find((p) => p.href === href.trim().replace(/\/+$/, ""));
+    if (page) return addPage(page);
     update([...navLinks, { label: label.trim(), href: href.trim() }]);
   };
 
@@ -61,8 +62,9 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
   };
 
   // Pages (and Home) that aren't in the menu yet, for one-click adding.
-  const linked = new Set(navLinks.map((l) => l.href));
-  const suggestions = [{ label: "Home", href: "/" }, ...pages].filter((p) => !linked.has(p.href));
+  const linked = new Set(navLinks.flatMap((l) => [l.href, l.pageId]));
+  const homeLinked = linked.has("/");
+  const suggestions = pages.filter((p) => !linked.has(p.pageId) && !linked.has(p.href));
 
   return (
     <>
@@ -76,7 +78,10 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
           )}
           {navLinks.map((link, i) => (
             <div className="nav-link-row" key={i}>
-              <span className="nav-link-row__label">{link.label}</span>
+              <span className="nav-link-row__label">
+                {link.label}
+                {link.pageId && <span className="badge badge--gray nav-link-row__badge">Page</span>}
+              </span>
               <span className="nav-link-row__href">{link.href}</span>
               <div className="nav-link-row__actions">
                 <button type="button" className="btn btn--ghost btn--sm" title="Move up" onClick={() => move(i, -1)} disabled={i === 0}>↑</button>
@@ -86,11 +91,16 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
             </div>
           ))}
         </div>
-        {suggestions.length > 0 && (
+        {(suggestions.length > 0 || !homeLinked) && (
           <div className="nav-editor__suggest">
             <span>Add a page:</span>
+            {!homeLinked && (
+              <button type="button" className="filter-btn" onClick={() => addLink("Home", "/")}>
+                + Home
+              </button>
+            )}
             {suggestions.map((p) => (
-              <button key={p.href} type="button" className="filter-btn" onClick={() => addLink(p.label, p.href)}>
+              <button key={p.pageId} type="button" className="filter-btn" onClick={() => addPage(p)}>
                 + {p.label}
               </button>
             ))}
@@ -99,7 +109,7 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
         <div className="nav-link-add-row">
           <input
             type="text"
-            placeholder="Label (e.g. Newsletter)"
+            placeholder="Label (e.g. Instagram)"
             aria-label="Link label"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
@@ -107,7 +117,7 @@ export function NavigationEditor({ navLinks: raw, pages }: { navLinks: string; p
           />
           <input
             type="text"
-            placeholder="URL (e.g. /category/news or https://…)"
+            placeholder="Other link (e.g. /category/news or https://…)"
             aria-label="Link address"
             value={newHref}
             onChange={(e) => setNewHref(e.target.value)}

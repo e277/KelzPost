@@ -3,15 +3,7 @@ import type { Settings } from "@/db/schema";
 import { NavLinks } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
 
-type NavLink = { label: string; href: string };
-
-function parseNavLinks(raw: string): NavLink[] {
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.filter((l) => l.label && l.href);
-  } catch {}
-  return [{ label: "Home", href: "/" }, { label: "About", href: "/about" }];
-}
+import { parseNavLinks } from "@/lib/nav-links";
 
 export function SiteHeader({ settings }: { settings: Settings }) {
   const displayTitle = settings.logoText?.trim() || settings.blogTitle || "The Journal";

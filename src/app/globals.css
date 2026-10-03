@@ -1178,13 +1178,6 @@ button.dash-stat:hover { box-shadow: var(--shadow-md); transform: translateY(-1p
     background: var(--navy);
     position: sticky; top: 0; z-index: 60;
   }
-  .admin-mobilebar__nav { display: flex; gap: 4px; overflow-x: auto; padding: 8px 12px; }
-  .admin-mobilebar__nav a {
-    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
-    padding: 8px 12px; border-radius: var(--radius-sm);
-    color: rgba(255,255,255,.7); font-size: .82rem; font-weight: 500; white-space: nowrap;
-  }
-  .admin-mobilebar__nav a.active { background: var(--gold); color: var(--white); }
   .admin-topbar { position: static; padding: 0 16px; }
   .admin-page { padding: 24px 16px; }
 
@@ -1743,16 +1736,7 @@ html[data-theme="dark"] .post-body th { background: var(--dk-raised); }
     height: auto; min-height: 60px; padding: 12px 16px;
     flex-wrap: wrap; gap: 10px;
   }
-  /* Hides the scrollbar and fades the right edge to show the menu scrolls sideways. */
-  .admin-mobilebar__nav {
-    scrollbar-width: none; padding-right: 32px;
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
-  }
-  .admin-mobilebar__nav::-webkit-scrollbar { display: none; }
-  .admin-mobilebar__nav .admin-nav-count { margin-left: 2px; }
   .admin-page { padding: 20px 16px 32px; }
-  .admin-mobilebar__nav > a:last-child, .admin-mobilebar__nav > button:last-child { color: rgba(255,255,255,.55); }
   .dash-stats { gap: 12px; margin-bottom: 24px; }
   .dash-stat { padding: 18px; }
   .dash-stat__value { font-size: 1.8rem; }
@@ -1842,3 +1826,29 @@ html[data-theme="dark"] .post-card:hover .post-card__title a { color: color-mix(
 @media (max-width: 1024px) { .taxonomy-grid { grid-template-columns: minmax(0, 1fr); } }
 .posts-table__date { white-space: nowrap; color: var(--gray-400); }
 .posts-table__wrap { overflow-wrap: anywhere; }
+
+/* Admin menu on phones: logo + hamburger, opening a dropdown like the public header. */
+.admin-mobilebar__bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; min-height: 60px;
+}
+.admin-mobilebar__bar .blog-logo { color: var(--white); }
+.admin-mobilebar__toggle { display: flex; }
+.admin-mobilebar__nav {
+  display: none;
+  position: absolute; top: 100%; left: 0; right: 0;
+  flex-direction: column; align-items: stretch; gap: 2px;
+  background: var(--navy); padding: 8px 16px 16px;
+  box-shadow: var(--shadow-md);
+  max-height: calc(100vh - 60px); overflow-y: auto;
+}
+.admin-mobilebar__nav.is-open { display: flex; }
+.admin-mobilebar__nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  color: rgba(255,255,255,.75); font-size: .9rem; font-weight: 500;
+}
+.admin-mobilebar__nav a:hover { color: var(--white); background: rgba(255,255,255,.08); }
+.admin-mobilebar__nav a.active { background: var(--gold); color: var(--white); }
+.admin-mobilebar__nav > a:last-child { color: rgba(255,255,255,.55); border-top: 1px solid rgba(255,255,255,.08); border-radius: 0; margin-top: 6px; padding-top: 16px; }
+.nav-link-row__badge { margin-left: 8px; vertical-align: middle; }

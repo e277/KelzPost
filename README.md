@@ -76,14 +76,17 @@ managed from the built-in admin panel. No content is hardcoded.
   readers, export the list as CSV (admins only)
 - Pages (admins only): edit the built-in About page (always at `/about`, with the
   author photo, name and bio, edited on the same screen), create custom pages, and set the
-  header navigation (add any page in one click, reorder, or link anywhere)
+  header navigation. A new page gets its header link automatically (untick **Show in
+  navigation** to leave it out), and that link follows the page's title and address and
+  goes away when the page is deleted. Site Navigation reorders the links and adds others,
+  like Home, a category or another site
 - Categories & Tags (admins only): add or remove categories, and clean up tags you no
   longer use
 - Configurations (admins only, formerly Settings): how the public site looks: title,
   colors, homepage hero and layout, social links and footer. Each person changes their
   own password under **Your Profile**
-- Works on phones, tablets and desktops: on smaller screens the sidebar becomes a
-  scrolling menu bar and the dashboard lists posts as cards
+- Works on phones, tablets and desktops: on smaller screens the admin sidebar becomes a
+  hamburger menu like the blog's own header, and the dashboard lists posts as cards
 
 ## Tech stack
 

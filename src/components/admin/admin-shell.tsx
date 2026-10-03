@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { comments, db } from "@/db";
 import { getCurrentUser, isAdmin } from "@/lib/current-user";
 import { getSettings } from "@/lib/site";
+import { AdminMobileMenu } from "./admin-mobile-menu";
 import { LogoutButton } from "./logout-button";
 
 // Shared by the sidebar and the mobile bar, so the count is queried once per request.
@@ -145,17 +146,21 @@ export async function AdminShell({
     </>
   );
 
+  const logo = (
+    <div className="blog-logo">
+      <div className="blog-logo__mark">{name[0]?.toUpperCase() || "J"}</div>
+      <div className="blog-logo__text">
+        {lead ? `${lead} ` : ""}
+        <span>{last}</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <div className="admin-sidebar__logo">
-          <div className="blog-logo">
-            <div className="blog-logo__mark">{name[0]?.toUpperCase() || "J"}</div>
-            <div className="blog-logo__text">
-              {lead ? `${lead} ` : ""}
-              <span style={{ color: "var(--gold)" }}>{last}</span>
-            </div>
-          </div>
+          {logo}
         </div>
 
         <div className="admin-sidebar__label">Main Menu</div>
@@ -167,12 +172,10 @@ export async function AdminShell({
       </aside>
 
       <div className="admin-content">
-        <div className="admin-mobilebar">
-          <nav className="admin-mobilebar__nav" aria-label="Admin">
-            {navItems}
-            <LogoutButton />
-          </nav>
-        </div>
+        <AdminMobileMenu logo={logo}>
+          {navItems}
+          <LogoutButton />
+        </AdminMobileMenu>
 
         <div className="admin-topbar">
           <h1 className="admin-topbar__title">{title}</h1>
