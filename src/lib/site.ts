@@ -2,7 +2,7 @@ import { db, settings, type Settings } from "@/db";
 import { DEFAULT_SETTINGS } from "@/lib/defaults";
 
 /**
- * Public, absolute base URL of the site (no trailing slash), used for RSS,
+ * Public, absolute base URL of the site (no trailing slash), used for
  * sitemap and Open Graph URLs. Set SITE_URL for a custom domain; on Vercel it
  * falls back to the project's production domain.
  */

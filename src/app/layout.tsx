@@ -29,9 +29,6 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [`${SITE_URL}/og`],
     },
     twitter: { card: "summary_large_image" },
-    alternates: {
-      types: { "application/rss+xml": [{ url: `${SITE_URL}/feed.xml`, title: `${settings.blogTitle} RSS` }] },
-    },
   };
 }
 
