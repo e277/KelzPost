@@ -5,7 +5,8 @@ import { absoluteUrl } from "@/lib/site";
 import { livePosts } from "@/lib/posts";
 import { slugify } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+// Cached; rebuilt at most once a minute, or straight away after an edit.
+export const revalidate = 60;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, pages, categories, tags, authors] = await Promise.all([

@@ -3,7 +3,9 @@ import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
-export const dynamic = "force-dynamic";
+// Served from cache and rebuilt in the background at most once a minute (so
+// scheduled posts appear on time); edits in the admin refresh it straight away.
+export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();

@@ -3,7 +3,8 @@ import { cardRelations, livePosts, postByline } from "@/lib/posts";
 import { getSettings, absoluteUrl, SITE_URL } from "@/lib/site";
 import { escapeXml, summarize } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+// Cached; rebuilt at most once a minute, or straight away after an edit.
+export const revalidate = 60;
 
 export async function GET() {
   const [settings, posts] = await Promise.all([

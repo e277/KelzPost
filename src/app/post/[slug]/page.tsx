@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { and, asc, eq } from "drizzle-orm";
-import { comments as commentsTable, db } from "@/db";
+import { and, asc, desc, eq, ne, notInArray, sql } from "drizzle-orm";
+import { comments as commentsTable, db, posts } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { isMailerConfigured } from "@/lib/mailer";
 import { formatDate, summarize, readingTime } from "@/lib/utils";
@@ -27,6 +27,15 @@ import { AuthorBox } from "@/components/author-box";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 import { PostComments, type PublicComment } from "@/components/post-comments";
 import { ViewTracker } from "@/components/view-tracker";
+
+// Served from cache and rebuilt in the background at most once a minute (so
+// scheduled posts appear on time); edits in the admin refresh it straight away.
+export const revalidate = 60;
+
+// Pages are built the first time they're visited, then cached (see revalidate).
+export function generateStaticParams() {
+  return [];
+}
 
 async function getPublishedPost(slug: string) {
   const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: postPageRelations });
@@ -56,6 +65,40 @@ async function getComments(postId: string): Promise<{ threads: PublicComment[]; 
   const replies = rows.filter((c) => c.parentId && threads.has(c.parentId));
   for (const c of replies) threads.get(c.parentId!)!.replies.push(toPublic(c));
   return { threads: [...threads.values()], count: threads.size + replies.length };
+}
+
+/** The next newer and next older live posts, for the "Previous / Next" links. */
+async function getNeighbours(post: { publishedAt: Date | null; createdAt: Date }) {
+  // Same order as listings: newest publish date first, then newest created.
+  const key = sql`(${posts.publishedAt}, ${posts.createdAt})`;
+  const here = sql`(${(post.publishedAt ?? post.createdAt).toISOString()}::timestamp(3), ${post.createdAt.toISOString()}::timestamp(3))`;
+  const columns = { slug: true, title: true } as const;
+  const [newer, older] = await Promise.all([
+    db.query.posts.findFirst({ where: and(livePosts(), sql`${key} > ${here}`), columns, orderBy: [asc(posts.publishedAt), asc(posts.createdAt)] }),
+    db.query.posts.findFirst({ where: and(livePosts(), sql`${key} < ${here}`), columns, orderBy: [desc(posts.publishedAt), desc(posts.createdAt)] }),
+  ]);
+  return { newer: newer ?? null, older: older ?? null };
+}
+
+/** Up to 3 more posts: the same category first, then the most recent. */
+async function getRelated(post: { id: string; categoryId: string | null }) {
+  const order = [desc(posts.publishedAt), desc(posts.createdAt)];
+  const sameCategory = post.categoryId
+    ? await db.query.posts.findMany({
+        where: and(livePosts(), eq(posts.categoryId, post.categoryId), ne(posts.id, post.id)),
+        with: cardRelations,
+        orderBy: order,
+        limit: 3,
+      })
+    : [];
+  if (sameCategory.length >= 3) return sameCategory;
+  const recent = await db.query.posts.findMany({
+    where: and(livePosts(), notInArray(posts.id, [post.id, ...sameCategory.map((p) => p.id)])),
+    with: cardRelations,
+    orderBy: order,
+    limit: 3 - sameCategory.length,
+  });
+  return [...sameCategory, ...recent];
 }
 
 /** Share image: the post's own, then a hosted cover image, then the generated card. */
@@ -119,20 +162,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const byline = postByline(post, settings.authorName);
   const author = postAuthorProfile(post, settings);
 
-  // Chronological neighbours and up to 3 related posts (same category first, then most recent).
-  const published = await db.query.posts.findMany({
-    where: livePosts(),
-    with: cardRelations,
-    orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
-  });
-  const index = published.findIndex((p) => p.id === post.id);
-  const newer = index > 0 ? published[index - 1] : null;
-  const older = index >= 0 && index < published.length - 1 ? published[index + 1] : null;
-  const others = published.filter((p) => p.id !== post.id);
-  const related = [
-    ...others.filter((p) => post.categoryId && p.categoryId === post.categoryId),
-    ...others.filter((p) => !post.categoryId || p.categoryId !== post.categoryId),
-  ].slice(0, 3);
+  const [{ newer, older }, related] = await Promise.all([getNeighbours(post), getRelated(post)]);
 
   const jsonLd = {
     "@context": "https://schema.org",

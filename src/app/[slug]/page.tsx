@@ -6,7 +6,14 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { highlightCodeBlocks } from "@/lib/highlight";
 
-export const dynamic = "force-dynamic";
+// Served from cache and rebuilt in the background at most once a minute (so
+// scheduled posts appear on time); edits in the admin refresh it straight away.
+export const revalidate = 60;
+
+// Pages are built the first time they're visited, then cached (see revalidate).
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

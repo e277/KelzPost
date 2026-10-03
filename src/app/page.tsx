@@ -7,7 +7,9 @@ import { SiteFooter } from "@/components/site-footer";
 import { HomeContent } from "@/components/home-content";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 
-export const dynamic = "force-dynamic";
+// Served from cache and rebuilt in the background at most once a minute (so
+// scheduled posts appear on time); edits in the admin refresh it straight away.
+export const revalidate = 60;
 
 export default async function HomePage() {
   const settings = await getSettings();
