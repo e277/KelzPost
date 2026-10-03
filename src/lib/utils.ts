@@ -5,6 +5,13 @@ export function slugify(str: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
+// Top-level addresses the blog already uses, so a custom page can't take them.
+// "about" is the built-in About page, edited under Admin → Pages.
+export const RESERVED_PAGE_SLUGS = new Set([
+  "about", "admin", "api", "author", "category", "feed.xml", "newsletter",
+  "og", "post", "robots.txt", "search", "sitemap.xml", "tag",
+]);
+
 export function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "";
   return new Date(date).toLocaleDateString("en-US", {

@@ -74,9 +74,12 @@ managed from the built-in admin panel. No content is hardcoded.
 - Comments: approve, reply to, mark as spam or delete reader comments (admins only)
 - Newsletter: see subscribers, email a published post to them in one click, remove
   readers, export the list as CSV (admins only)
+- Pages (admins only): edit the built-in About page (always at `/about`, with the
+  author photo, name and bio from Settings above it) and create custom pages
 - Settings (admins only): branding, colors, navigation, hero, layout, default author,
-  categories, social links, footer, About content, password change
-- Works on mobile
+  categories, social links, footer, password change
+- Works on phones, tablets and desktops: on smaller screens the sidebar becomes a
+  scrolling menu bar and the dashboard lists posts as cards
 
 ## Tech stack
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Page } from "@/db/schema";
@@ -8,25 +9,45 @@ import { uploadImage } from "@/lib/image";
 import { slugify } from "@/lib/utils";
 import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
 
-export function PageEditor({ page }: { page: Page | null }) {
+// The About page is built in: it always lives at /about, shows the author's
+// photo, name and bio from Settings above its content, and is stored in settings.
+type AboutPage = { title: string; content: string };
+
+export function PageEditor({ page, about }: { page: Page | null; about?: AboutPage }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
   const { editor, insertImages } = useRichTextEditor({
-    content: page?.content || "",
+    content: (about ? about.content : page?.content) || "",
     placeholder: "Write your page content here…",
     uploadImage,
     onError: (m) => showToast(m, "error"),
   });
 
-  const [title, setTitle] = useState(page?.title || "");
-  const [slug, setSlug] = useState(page?.slug || "");
+  const [title, setTitle] = useState((about ? about.title : page?.title) || "");
+  const [slug, setSlug] = useState(about ? "about" : page?.slug || "");
   const [slugEdited, setSlugEdited] = useState(!!page);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const save = async () => {
     if (!title.trim()) { showToast("Please add a title.", "error"); return; }
 
-    const payload = { title: title.trim(), slug: slug.trim(), content: !editor || editor.isEmpty ? "" : editor.getHTML() };
+    const content = !editor || editor.isEmpty ? "" : editor.getHTML();
+    if (about) {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aboutTitle: title.trim(), aboutContent: content }),
+      });
+      if (res.ok) {
+        showToast("Page saved.");
+        router.refresh();
+      } else {
+        showToast("Failed to save page.", "error");
+      }
+      return;
+    }
+
+    const payload = { title: title.trim(), slug: slug.trim(), content };
     const res = await fetch(page ? `/api/pages/${page.id}` : "/api/pages", {
       method: page ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,10 +88,16 @@ export function PageEditor({ page }: { page: Page | null }) {
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
-                  if (!slugEdited) setSlug(slugify(e.target.value));
+                  if (!slugEdited && !about) setSlug(slugify(e.target.value));
                 }}
               />
 
+              {about ? (
+                <p className="settings-section-note" style={{ marginTop: 0, marginBottom: 16 }}>
+                  Built-in page at <code>/about</code>. Your photo, name and bio from{" "}
+                  <Link href="/admin/settings">Settings → Author Profile</Link> appear above this content.
+                </p>
+              ) : (
               <div className="form-group" style={{ marginBottom: 16 }}>
                 <label htmlFor="pageSlug" style={{ fontSize: ".8rem", color: "var(--gray-500)", fontWeight: 600 }}>
                   URL slug — will be accessible at <code>/{slug || "page-slug"}</code>
@@ -83,6 +110,7 @@ export function PageEditor({ page }: { page: Page | null }) {
                   onChange={(e) => { setSlugEdited(true); setSlug(slugify(e.target.value)); }}
                 />
               </div>
+              )}
 
               <RichTextEditor editor={editor} insertImages={insertImages} onError={(m) => showToast(m, "error")} />
             </div>

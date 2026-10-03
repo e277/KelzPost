@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { highlightCodeBlocks } from "@/lib/highlight";
 
 // Served from cache and rebuilt in the background at most once a minute (so
 // scheduled posts appear on time); edits in the admin refresh it straight away.
@@ -33,9 +34,9 @@ export default async function AboutPage() {
           </div>
 
           {settings.aboutContent ? (
-            <div className="about-body" dangerouslySetInnerHTML={{ __html: settings.aboutContent }} />
+            <div className="about-body post-body" dangerouslySetInnerHTML={{ __html: highlightCodeBlocks(settings.aboutContent) }} />
           ) : (
-            <div className="about-empty">Nothing here yet — add some content from the admin Settings page.</div>
+            <div className="about-empty">Nothing here yet. Add some content under Admin → Pages → About.</div>
           )}
         </div>
       </main>
