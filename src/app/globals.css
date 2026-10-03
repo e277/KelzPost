@@ -1296,3 +1296,96 @@ html[data-theme="dark"] .post-toc a:hover,
 html[data-theme="dark"] .about-name,
 html[data-theme="dark"] .not-found__code,
 html[data-theme="dark"] a.pagination__link:hover { color: color-mix(in srgb, var(--gold) 45%, #ffffff); }
+
+/* ── Comments (public) ── */
+.comments { margin-top: 56px; padding-top: 40px; border-top: 1px solid var(--gray-200); }
+.comments__title { font-family: var(--font-display); font-size: 1.6rem; color: var(--navy); margin-bottom: 24px; }
+.comments__subtitle { font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+.comments__empty { color: var(--gray-400); margin-bottom: 8px; }
+.comments__list, .comments__replies { list-style: none; }
+.comments__list > li + li { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--gray-100); }
+.comments__replies { margin: 18px 0 0 56px; padding-left: 20px; border-left: 2px solid var(--gray-200); }
+.comments__replies > li + li { margin-top: 18px; }
+.comments__new { margin-top: 40px; padding: 28px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); background: var(--off-white); }
+.comment { display: flex; gap: 16px; align-items: flex-start; }
+.comment__avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gray-100); color: var(--gray-600); font-weight: 700;
+}
+.comment__avatar--author { background: var(--navy); color: var(--white); }
+.comment__main { flex: 1; min-width: 0; }
+.comment__meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .82rem; color: var(--gray-400); margin-bottom: 6px; }
+.comment__name { font-size: .95rem; color: var(--navy); }
+.comment__badge { padding: 2px 8px; font-size: .68rem; }
+.comment__body { color: var(--gray-800); white-space: pre-line; overflow-wrap: anywhere; }
+.comment__reply {
+  margin-top: 8px; background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: .82rem; font-weight: 700; color: var(--gold);
+}
+.comment__reply:hover { color: var(--navy); }
+.comment-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.comment-form__optional { font-weight: 400; color: var(--gray-400); }
+.comment-form__hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.comment-form__error { color: var(--red); font-size: .85rem; margin: -6px 0 12px; }
+.comment-form__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.comment-form__note { font-size: .78rem; color: var(--gray-400); }
+.comment-form__sent {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  background: #d8f3dc; color: var(--green); font-size: .9rem; font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .comment-form__row { grid-template-columns: 1fr; }
+  .comments__replies { margin-left: 20px; padding-left: 14px; }
+  .comments__new { padding: 20px; }
+}
+
+html[data-theme="dark"] .comments,
+html[data-theme="dark"] .comments__list > li + li,
+html[data-theme="dark"] .comments__replies { border-color: var(--dk-border); }
+html[data-theme="dark"] .comments__title,
+html[data-theme="dark"] .comments__subtitle,
+html[data-theme="dark"] .comment__name,
+html[data-theme="dark"] .comments .form-group label { color: var(--dk-heading); }
+html[data-theme="dark"] .comment__body { color: var(--dk-text); }
+html[data-theme="dark"] .comments__empty,
+html[data-theme="dark"] .comment__meta,
+html[data-theme="dark"] .comment-form__note,
+html[data-theme="dark"] .comment-form__optional { color: var(--dk-muted); }
+html[data-theme="dark"] .comments__new { background: var(--dk-surface); border-color: var(--dk-border); }
+html[data-theme="dark"] .comment__avatar { background: var(--dk-raised); color: var(--dk-muted); }
+html[data-theme="dark"] .comment__avatar--author { background: var(--gold); color: #fff; }
+html[data-theme="dark"] .comments .form-group input,
+html[data-theme="dark"] .comments .form-group textarea { background: var(--dk-bg); border-color: var(--dk-border); color: var(--dk-text); }
+html[data-theme="dark"] .comment__reply { color: color-mix(in srgb, var(--gold) 45%, #ffffff); }
+html[data-theme="dark"] .comment__reply:hover { color: var(--dk-heading); }
+html[data-theme="dark"] .comments .btn--ghost { border-color: var(--dk-border); color: var(--dk-muted); }
+html[data-theme="dark"] .comments .btn--ghost:hover { border-color: var(--gold); color: var(--dk-heading); }
+html[data-theme="dark"] .comment-form__sent { background: #173a2a; color: #9fe0bd; }
+
+/* ── Comments (admin moderation) ── */
+.admin-nav-count {
+  margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 999px;
+  background: var(--gold); color: var(--white); font-size: .72rem; font-weight: 700; text-align: center;
+}
+.admin-sidebar__nav a.active .admin-nav-count,
+.admin-mobilebar__nav a.active .admin-nav-count { background: var(--white); color: var(--gold); }
+.comment-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.comment-tabs .filter-btn { display: inline-flex; align-items: center; gap: 6px; }
+.comment-tabs__count { font-size: .75rem; opacity: .75; }
+.comment-mod-list > li { padding: 20px 24px; border-bottom: 1px solid var(--gray-100); }
+.comment-mod-list > li:last-child { border-bottom: none; }
+.comment-mod__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.comment-mod__name { color: var(--navy); }
+.comment-mod__email { font-size: .82rem; color: var(--gold); overflow-wrap: anywhere; }
+.comment-mod__email:hover { color: var(--navy); }
+.comment-mod__date { font-size: .8rem; color: var(--gray-400); margin-left: auto; }
+.comment-mod__on { font-size: .8rem; color: var(--gray-400); margin-bottom: 10px; }
+.comment-mod__on a { color: var(--navy); font-weight: 600; }
+.comment-mod__on a:hover { color: var(--gold); }
+.comment-mod__body { color: var(--gray-800); font-size: .92rem; white-space: pre-line; overflow-wrap: anywhere; margin-bottom: 14px; }
+.comment-mod__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.comment-mod__reply { margin-top: 16px; max-width: 640px; }
+.comment-mod__reply .form-group { margin-bottom: 10px; }

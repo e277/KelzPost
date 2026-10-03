@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { db } from "@/db";
+import { and, asc, eq } from "drizzle-orm";
+import { comments as commentsTable, db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
-import { summarize, readingTime } from "@/lib/utils";
+import { formatDate, summarize, readingTime } from "@/lib/utils";
 import { getPostTags, isLive, livePosts, withHeadingAnchors } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -12,10 +13,36 @@ import { PostCard } from "@/components/post-card";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
 import { AuthorBox } from "@/components/author-box";
+import { PostComments, type PublicComment } from "@/components/post-comments";
 
 async function getPublishedPost(slug: string) {
   const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
   return post && isLive(post) ? post : null;
+}
+
+/** Approved comments, oldest first, with replies nested under the comment they answer. */
+async function getComments(postId: string): Promise<{ threads: PublicComment[]; count: number }> {
+  const rows = await db
+    .select()
+    .from(commentsTable)
+    .where(and(eq(commentsTable.postId, postId), eq(commentsTable.status, "approved")))
+    .orderBy(asc(commentsTable.createdAt));
+
+  // Only what visitors may see: the commenter's email stays on the server.
+  const toPublic = (c: (typeof rows)[number]): PublicComment => ({
+    id: c.id,
+    authorName: c.authorName,
+    content: c.content,
+    isAuthor: c.isAuthor,
+    date: formatDate(c.createdAt),
+    iso: c.createdAt.toISOString(),
+  });
+  const threads = new Map<string, PublicComment & { replies: PublicComment[] }>();
+  for (const c of rows) if (!c.parentId) threads.set(c.id, { ...toPublic(c), replies: [] });
+  // A reply whose parent isn't approved has nothing to hang from, so it stays hidden.
+  const replies = rows.filter((c) => c.parentId && threads.has(c.parentId));
+  for (const c of replies) threads.get(c.parentId!)!.replies.push(toPublic(c));
+  return { threads: [...threads.values()], count: threads.size + replies.length };
 }
 
 /** Share image: the post's own, then a hosted cover image, then the generated card. */
@@ -74,7 +101,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   if (!post) notFound();
 
-  const tags = await getPostTags(post.id);
+  const [tags, comments] = await Promise.all([getPostTags(post.id), getComments(post.id)]);
   const { html, toc } = withHeadingAnchors(post.content);
 
   // Chronological neighbours and up to 3 related posts (same category first, then most recent).
@@ -106,6 +133,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     publisher: { "@type": "Organization", name: settings.blogTitle, url: absoluteUrl("/") },
     mainEntityOfPage: absoluteUrl(`/post/${post.slug}`),
     timeRequired: `PT${readingTime(post.content)}M`,
+    commentCount: comments.count,
   };
 
   return (
@@ -151,6 +179,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
               )}
             </nav>
           )}
+
+          <PostComments postId={post.id} comments={comments.threads} count={comments.count} />
         </div>
 
         {related.length > 0 && (

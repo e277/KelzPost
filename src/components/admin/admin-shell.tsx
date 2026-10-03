@@ -1,6 +1,21 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { cache, type ReactNode } from "react";
+import { eq } from "drizzle-orm";
+import { comments, db } from "@/db";
 import { LogoutButton } from "./logout-button";
+
+// Shared by the sidebar and the mobile bar, so the count is queried once per request.
+const pendingCommentCount = cache(() => db.$count(comments, eq(comments.status, "pending")));
+
+async function PendingCommentsBadge() {
+  const count = await pendingCommentCount().catch(() => 0);
+  if (!count) return null;
+  return (
+    <span className="admin-nav-count" aria-label={`${count} waiting for approval`}>
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 export function AdminShell({
   blogTitle,
@@ -10,7 +25,7 @@ export function AdminShell({
   children,
 }: {
   blogTitle: string;
-  active: "dashboard" | "editor" | "pages" | "settings";
+  active: "dashboard" | "editor" | "pages" | "comments" | "settings";
   title: string;
   actions?: ReactNode;
   children: ReactNode;
@@ -47,6 +62,13 @@ export function AdminShell({
               <polyline points="10 9 9 9 8 9" />
             </svg>
             Pages
+          </Link>
+          <Link href="/admin/comments" className={active === "comments" ? "active" : ""}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Comments
+            <PendingCommentsBadge />
           </Link>
           <Link href="/admin/settings" className={active === "settings" ? "active" : ""}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="16" height="16">
