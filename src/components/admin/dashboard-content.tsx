@@ -5,6 +5,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/toast";
+import { apiSend } from "@/lib/admin-api";
+import { ConfirmDialog } from "./ui";
 
 export type DashboardPost = {
   id: string;
@@ -89,31 +91,21 @@ export function DashboardContent({
 
   const handleDelete = async () => {
     if (!pendingDeleteId) return;
-    const res = await fetch(`/api/posts/${pendingDeleteId}`, { method: "DELETE" });
+    const res = await apiSend(`/api/posts/${pendingDeleteId}`, "DELETE", undefined, "Failed to delete post.");
     setPendingDeleteId(null);
-    if (res.ok) {
-      showToast("Post deleted.");
-      router.refresh();
-    } else {
-      showToast("Failed to delete post.", "error");
-    }
+    if (!res.ok) return showToast(res.error, "error");
+    showToast("Post deleted.");
+    router.refresh();
   };
 
   const toggleStatus = async (post: DashboardPost) => {
     const status = post.status === "published" ? "draft" : "published";
     setBusyId(post.id);
-    const res = await fetch(`/api/posts/${post.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    const res = await apiSend(`/api/posts/${post.id}`, "PATCH", { status }, "Failed to update post.");
     setBusyId(null);
-    if (res.ok) {
-      showToast(status === "published" ? `“${post.title}” is live.` : `“${post.title}” moved to drafts.`);
-      router.refresh();
-    } else {
-      showToast("Failed to update post.", "error");
-    }
+    if (!res.ok) return showToast(res.error, "error");
+    showToast(status === "published" ? `“${post.title}” is live.` : `“${post.title}” moved to drafts.`);
+    router.refresh();
   };
 
   return (
@@ -219,7 +211,7 @@ export function DashboardContent({
                       {post.views.toLocaleString()}
                       {post.views > 0 && <small>{post.recentViews.toLocaleString()} in 30 days</small>}
                     </td>
-                    <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }} data-label={sort === "created" ? "Created" : "Last edited"}>
+                    <td className="posts-table__date" data-label={sort === "created" ? "Created" : "Last edited"}>
                       {formatDate(sort === "created" ? post.createdAt : post.updatedAt)}
                     </td>
                     <td className="posts-table__actions-cell">
@@ -250,22 +242,9 @@ export function DashboardContent({
         )}
       </div>
 
-      <div className={`modal-overlay${pendingDeleteId ? " open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) setPendingDeleteId(null); }}>
-        <div className="modal" role="dialog" aria-modal="true">
-          <h2 className="modal__title">Delete Post?</h2>
-          <p className="modal__body">
-            {pendingPost ? <>“{pendingPost.title}” will be permanently removed. </> : null}This action cannot be undone.
-          </p>
-          <div className="modal__actions">
-            <button className="btn btn--ghost" onClick={() => setPendingDeleteId(null)}>
-              Cancel
-            </button>
-            <button className="btn btn--danger" onClick={handleDelete}>
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmDialog open={!!pendingDeleteId} title="Delete Post?" onConfirm={handleDelete} onCancel={() => setPendingDeleteId(null)}>
+        {pendingPost ? <>“{pendingPost.title}” will be permanently removed. </> : null}This action cannot be undone.
+      </ConfirmDialog>
 
       {toastElement}
     </>

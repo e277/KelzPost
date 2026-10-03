@@ -17,7 +17,7 @@ export default async function NewPostPage() {
   const team = isAdmin(user) ? await teamMembers(settings.authorName) : [{ id: user.id, name: memberName(user, settings.authorName) }];
 
   return (
-    <AdminShell blogTitle={settings.blogTitle} active="editor" title="New Post">
+    <AdminShell active="editor" title="New Post">
       <PostEditor
         categories={categories}
         post={null}

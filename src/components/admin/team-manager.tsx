@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
+import { apiSend } from "@/lib/admin-api";
 import { formatDate } from "@/lib/utils";
+import { AdminCard, ConfirmDialog, Field, FormError } from "./ui";
 
 export type TeamRow = {
   id: string;
@@ -38,17 +40,9 @@ export function TeamManager({ team }: { team: TeamRow[] }) {
     e.preventDefault();
     setFormError("");
     setBusy("add");
-    const res = await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName, username, password, role }),
-    }).catch(() => null);
+    const res = await apiSend("/api/users", "POST", { displayName, username, password, role }, "Could not add that person.");
     setBusy(null);
-    if (!res?.ok) {
-      const data = res ? await res.json().catch(() => ({})) : {};
-      setFormError(data.error || "Could not add that person.");
-      return;
-    }
+    if (!res.ok) return setFormError(res.error);
     showToast(`${displayName.trim()} can now sign in as “${username.trim()}”.`);
     setDisplayName("");
     setUsername("");
@@ -59,17 +53,9 @@ export function TeamManager({ team }: { team: TeamRow[] }) {
 
   const update = async (member: TeamRow, body: Record<string, string>, done: string) => {
     setBusy(member.id);
-    const res = await fetch(`/api/users/${member.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).catch(() => null);
+    const res = await apiSend(`/api/users/${member.id}`, "PATCH", body, "Could not save that change.");
     setBusy(null);
-    if (!res?.ok) {
-      const data = res ? await res.json().catch(() => ({})) : {};
-      showToast(data.error || "Could not save that change.", "error");
-      return;
-    }
+    if (!res.ok) return showToast(res.error, "error");
     showToast(done);
     router.refresh();
   };
@@ -85,13 +71,9 @@ export function TeamManager({ team }: { team: TeamRow[] }) {
     const member = removing;
     setRemoving(null);
     setBusy(member.id);
-    const res = await fetch(`/api/users/${member.id}`, { method: "DELETE" }).catch(() => null);
+    const res = await apiSend(`/api/users/${member.id}`, "DELETE", undefined, "Could not remove that person.");
     setBusy(null);
-    if (!res?.ok) {
-      const data = res ? await res.json().catch(() => ({})) : {};
-      showToast(data.error || "Could not remove that person.", "error");
-      return;
-    }
+    if (!res.ok) return showToast(res.error, "error");
     showToast(`${member.name} was removed.`);
     router.refresh();
   };
@@ -143,7 +125,7 @@ export function TeamManager({ team }: { team: TeamRow[] }) {
                     </select>
                   </td>
                   <td>{m.posts}</td>
-                  <td style={{ whiteSpace: "nowrap", color: "var(--gray-400)" }}>{formatDate(m.joined)}</td>
+                  <td className="posts-table__date">{formatDate(m.joined)}</td>
                   <td>
                     {m.isYou ? (
                       <Link href="/admin/profile" className="btn btn--ghost btn--sm">
@@ -167,55 +149,34 @@ export function TeamManager({ team }: { team: TeamRow[] }) {
         </div>
       </div>
 
-      <form className="editor-card team-add" onSubmit={addMember}>
-        <div className="editor-card__header">Add a team member</div>
-        <div className="editor-card__body">
-          <div className="team-add__grid">
-            <div className="form-group">
-              <label htmlFor="memberName">Name shown on their posts</label>
-              <input id="memberName" value={displayName} maxLength={60} required onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. Jordan Lee" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="memberUsername">Username</label>
-              <input id="memberUsername" value={username} required autoComplete="off" onChange={(e) => setUsername(e.target.value)} placeholder="e.g. jordan" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="memberPassword">Temporary password</label>
-              <input id="memberPassword" type="text" value={password} required minLength={8} autoComplete="off" onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="memberRole">Role</label>
-              <select id="memberRole" value={role} onChange={(e) => setRole(e.target.value === "admin" ? "admin" : "author")}>
-                <option value="author">Author</option>
-                <option value="admin">Admin</option>
-              </select>
-              <small className="field-hint">{ROLE_HELP[role]}</small>
-            </div>
-          </div>
-          <p className={`form-error${formError ? " visible" : ""}`}>{formError}</p>
-          <button type="submit" className="btn btn--primary btn--sm" disabled={busy === "add"}>
-            {busy === "add" ? "Adding…" : "Add to team"}
-          </button>
-          <small className="field-hint">Send them the username and password yourself. They sign in at /admin and can change the password under Your Profile.</small>
+      <AdminCard title="Add a team member" className="team-add" onSubmit={addMember}>
+        <div className="team-add__grid">
+          <Field label="Name shown on their posts" htmlFor="memberName">
+            <input id="memberName" value={displayName} maxLength={60} required onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g. Jordan Lee" />
+          </Field>
+          <Field label="Username" htmlFor="memberUsername">
+            <input id="memberUsername" value={username} required autoComplete="off" onChange={(e) => setUsername(e.target.value)} placeholder="e.g. jordan" />
+          </Field>
+          <Field label="Temporary password" htmlFor="memberPassword">
+            <input id="memberPassword" type="text" value={password} required minLength={8} autoComplete="off" onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
+          </Field>
+          <Field label="Role" htmlFor="memberRole" hint={ROLE_HELP[role]}>
+            <select id="memberRole" value={role} onChange={(e) => setRole(e.target.value === "admin" ? "admin" : "author")}>
+              <option value="author">Author</option>
+              <option value="admin">Admin</option>
+            </select>
+          </Field>
         </div>
-      </form>
+        <FormError message={formError} />
+        <button type="submit" className="btn btn--primary btn--sm" disabled={busy === "add"}>
+          {busy === "add" ? "Adding…" : "Add to team"}
+        </button>
+        <small className="field-hint">Send them the username and password yourself. They sign in at /admin and can change the password under Your Profile.</small>
+      </AdminCard>
 
-      <div className={`modal-overlay${removing ? " open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) setRemoving(null); }}>
-        <div className="modal" role="dialog" aria-modal="true">
-          <h2 className="modal__title">Remove {removing?.name}?</h2>
-          <p className="modal__body">
-            They won&apos;t be able to sign in any more. Their posts stay on the blog under their name.
-          </p>
-          <div className="modal__actions">
-            <button className="btn btn--ghost" onClick={() => setRemoving(null)}>
-              Cancel
-            </button>
-            <button className="btn btn--danger" onClick={remove}>
-              Remove
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmDialog open={!!removing} title={`Remove ${removing?.name ?? ""}?`} confirmLabel="Remove" onConfirm={remove} onCancel={() => setRemoving(null)}>
+        They won&apos;t be able to sign in any more. Their posts stay on the blog under their name.
+      </ConfirmDialog>
 
       {toastElement}
     </>

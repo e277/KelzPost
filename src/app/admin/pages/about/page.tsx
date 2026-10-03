@@ -11,7 +11,7 @@ export default async function EditAboutPage() {
   const title = settings.aboutTitle || "About";
 
   return (
-    <AdminShell blogTitle={settings.blogTitle} active="pages" title={title}>
+    <AdminShell active="pages" title={title}>
       <PageEditor
         page={null}
         about={{

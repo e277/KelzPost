@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -17,7 +18,7 @@ export default async function AdminPagesPage() {
 
   return (
     <AdminShell
-      blogTitle={settings.blogTitle}
+     
       active="pages"
       title="Pages"
       actions={
@@ -27,41 +28,20 @@ export default async function AdminPagesPage() {
       }
     >
       <div className="dash-posts">
-        <div className="dash-post-row">
-          <div className="dash-post-row__info">
-            <Link href="/admin/pages/about" className="dash-post-row__title">
-              {settings.aboutTitle || "About"} <span className="badge badge--gray">Built-in</span>
-            </Link>
-            <span className="dash-post-row__meta">/about · Shows your author photo, name and bio above the content</span>
-          </div>
-          <div className="dash-post-row__actions">
-            <a href="/about" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-              View
-            </a>
-            <Link href="/admin/pages/about" className="btn btn--ghost btn--sm">
-              Edit
-            </Link>
-          </div>
-        </div>
+        <PageRow
+          title={<>{settings.aboutTitle || "About"} <span className="badge badge--gray">Built-in</span></>}
+          meta="/about · Shows your author photo, name and bio above the content"
+          editHref="/admin/pages/about"
+          viewHref="/about"
+        />
         {pages.map((page) => (
-          <div className="dash-post-row" key={page.id}>
-            <div className="dash-post-row__info">
-              <Link href={`/admin/pages/${page.id}`} className="dash-post-row__title">
-                {page.title}
-              </Link>
-              <span className="dash-post-row__meta">
-                /{page.slug} · Updated {formatDate(page.updatedAt)}
-              </span>
-            </div>
-            <div className="dash-post-row__actions">
-              <a href={`/${page.slug}`} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
-                View
-              </a>
-              <Link href={`/admin/pages/${page.id}`} className="btn btn--ghost btn--sm">
-                Edit
-              </Link>
-            </div>
-          </div>
+          <PageRow
+            key={page.id}
+            title={page.title}
+            meta={`/${page.slug} · Updated ${formatDate(page.updatedAt)}`}
+            editHref={`/admin/pages/${page.id}`}
+            viewHref={`/${page.slug}`}
+          />
         ))}
         {pages.length === 0 && (
           <div className="dash-post-row dash-post-row--hint">
@@ -78,5 +58,26 @@ export default async function AdminPagesPage() {
         ]}
       />
     </AdminShell>
+  );
+}
+
+function PageRow({ title, meta, editHref, viewHref }: { title: ReactNode; meta: string; editHref: string; viewHref: string }) {
+  return (
+    <div className="dash-post-row">
+      <div className="dash-post-row__info">
+        <Link href={editHref} className="dash-post-row__title">
+          {title}
+        </Link>
+        <span className="dash-post-row__meta">{meta}</span>
+      </div>
+      <div className="dash-post-row__actions">
+        <a href={viewHref} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm">
+          View
+        </a>
+        <Link href={editHref} className="btn btn--ghost btn--sm">
+          Edit
+        </Link>
+      </div>
+    </div>
   );
 }

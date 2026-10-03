@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import type { Page } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { uploadImage } from "@/lib/image";
+import { apiSend } from "@/lib/admin-api";
 import { slugify } from "@/lib/utils";
 import { ImageUpload } from "./image-upload";
 import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
+import { AdminCard, ConfirmDialog, Field } from "./ui";
 
 // The About page is built in: it always lives at /about and shows the blog
 // author's photo, name and bio above its content. All of it is stored in settings.
@@ -37,60 +39,45 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
 
     const content = !editor || editor.isEmpty ? "" : editor.getHTML();
     if (about) {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await apiSend(
+        "/api/settings",
+        "PUT",
+        {
           aboutTitle: title.trim(),
           aboutContent: content,
           authorName: authorName.trim() || "Author",
           authorBio: authorBio.trim(),
           authorAvatar,
-        }),
-      });
-      if (res.ok) {
-        showToast("Page saved.");
-        router.refresh();
-      } else {
-        showToast("Failed to save page.", "error");
-      }
+        },
+        "Failed to save page."
+      );
+      if (!res.ok) return showToast(res.error, "error");
+      showToast("Page saved.");
+      router.refresh();
       return;
     }
 
     const payload = { title: title.trim(), slug: slug.trim(), content };
-    const res = await fetch(page ? `/api/pages/${page.id}` : "/api/pages", {
-      method: page ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      showToast(data.error || "Failed to save page.", "error");
-      return;
-    }
+    const res = await apiSend<{ id: string }>(page ? `/api/pages/${page.id}` : "/api/pages", page ? "PUT" : "POST", payload, "Failed to save page.");
+    if (!res.ok) return showToast(res.error, "error");
 
     showToast("Page saved.");
-    if (!page) {
-      const created = await res.json();
-      router.replace(`/admin/pages/${created.id}`);
-    }
+    if (!page) router.replace(`/admin/pages/${res.data.id}`);
     router.refresh();
   };
 
   const handleDelete = async () => {
     if (!page) return;
-    const res = await fetch(`/api/pages/${page.id}`, { method: "DELETE" });
+    const res = await apiSend(`/api/pages/${page.id}`, "DELETE", undefined, "Failed to delete page.");
     if (res.ok) router.push("/admin/pages");
-    else showToast("Failed to delete page.", "error");
+    else showToast(res.error, "error");
   };
 
   return (
     <>
       <div className="editor-layout">
         <div>
-          <div className="editor-card" style={{ marginBottom: 20 }}>
-            <div className="editor-card__body">
+          <AdminCard className="editor-card--main">
               <input
                 type="text"
                 className="editor-title"
@@ -103,15 +90,12 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
               />
 
               {about ? (
-                <p className="settings-section-note" style={{ marginTop: 0, marginBottom: 16 }}>
+                <p className="settings-section-note editor-slug">
                   Built-in page at <code>/about</code>. The author photo, name and bio from the panel on the
                   right appear above this content.
                 </p>
               ) : (
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label htmlFor="pageSlug" style={{ fontSize: ".8rem", color: "var(--gray-500)", fontWeight: 600 }}>
-                  URL slug — will be accessible at <code>/{slug || "page-slug"}</code>
-                </label>
+              <Field label="URL slug" htmlFor="pageSlug" hint={`/${slug || "page-slug"}`}>
                 <input
                   type="text"
                   id="pageSlug"
@@ -119,82 +103,62 @@ export function PageEditor({ page, about }: { page: Page | null; about?: AboutPa
                   value={slug}
                   onChange={(e) => { setSlugEdited(true); setSlug(slugify(e.target.value)); }}
                 />
-              </div>
+              </Field>
               )}
 
               <RichTextEditor editor={editor} insertImages={insertImages} onError={(m) => showToast(m, "error")} />
-            </div>
-          </div>
+          </AdminCard>
         </div>
 
         <div className="sidebar-panel">
-          <div className="editor-card">
-            <div className="editor-card__header">Actions</div>
-            <div className="editor-card__body">
-              <button type="button" className="btn btn--primary btn--sm btn--full" onClick={save}>
+          <AdminCard title="Actions">
+            <div className="editor-actions">
+              <button type="button" className="btn btn--primary btn--sm" onClick={save}>
                 Save Page
               </button>
-              {slug && (
-                <a
-                  href={`/${slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn--ghost btn--sm btn--full"
-                  style={{ marginTop: 10, display: "block", textAlign: "center" }}
-                >
-                  View Page →
-                </a>
-              )}
             </div>
-          </div>
+            {slug && (
+              <a href={`/${slug}`} target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--sm btn--full editor-view-link">
+                View page ↗
+              </a>
+            )}
+          </AdminCard>
 
           {about && (
-            <div className="editor-card">
-              <div className="editor-card__header">About the Author</div>
-              <div className="editor-card__body">
-                <div className="form-group">
-                  <label htmlFor="authorName">Name</label>
-                  <input type="text" id="authorName" placeholder="Author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="authorBio">Bio</label>
-                  <textarea id="authorBio" rows={4} placeholder="A short bio shown at the top of this page…" value={authorBio} onChange={(e) => setAuthorBio(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Photo</label>
-                  <ImageUpload value={authorAvatar} onChange={setAuthorAvatar} round onError={(m) => showToast(m, "error")} />
-                  <small className="field-hint">
+            <AdminCard title="About the Author">
+              <Field label="Name" htmlFor="authorName">
+                <input type="text" id="authorName" placeholder="Author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+              </Field>
+              <Field label="Bio" htmlFor="authorBio">
+                <textarea id="authorBio" rows={4} placeholder="A short bio shown at the top of this page…" value={authorBio} onChange={(e) => setAuthorBio(e.target.value)} />
+              </Field>
+              <Field
+                label="Photo"
+                hint={
+                  <>
                     This is the blog&apos;s main author. The name also shows on posts not credited to a team member. Other writers
                     set their own name and photo in <Link href="/admin/profile">Your Profile</Link>.
-                  </small>
-                </div>
-              </div>
-            </div>
+                  </>
+                }
+              >
+                <ImageUpload value={authorAvatar} onChange={setAuthorAvatar} round onError={(m) => showToast(m, "error")} />
+              </Field>
+            </AdminCard>
           )}
 
           {page && (
-            <div className="editor-card">
-              <div className="editor-card__header" style={{ color: "var(--red)" }}>Danger Zone</div>
-              <div className="editor-card__body">
-                <button type="button" className="btn btn--danger btn--sm btn--full" onClick={() => setShowDeleteModal(true)}>
-                  Delete This Page
-                </button>
-              </div>
-            </div>
+            <AdminCard title="Danger Zone" danger>
+              <button type="button" className="btn btn--danger btn--sm btn--full" onClick={() => setShowDeleteModal(true)}>
+                Delete This Page
+              </button>
+            </AdminCard>
           )}
         </div>
       </div>
 
-      <div className={`modal-overlay${showDeleteModal ? " open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}>
-        <div className="modal">
-          <h2 className="modal__title">Delete Page?</h2>
-          <p className="modal__body">This will permanently delete this page and its content. This cannot be undone.</p>
-          <div className="modal__actions">
-            <button className="btn btn--ghost" onClick={() => setShowDeleteModal(false)}>Cancel</button>
-            <button className="btn btn--danger" onClick={handleDelete}>Delete</button>
-          </div>
-        </div>
-      </div>
+      <ConfirmDialog open={showDeleteModal} title="Delete Page?" onConfirm={handleDelete} onCancel={() => setShowDeleteModal(false)}>
+        This will permanently delete this page and its content. This cannot be undone.
+      </ConfirmDialog>
 
       {toastElement}
     </>

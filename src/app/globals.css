@@ -1705,8 +1705,6 @@ html[data-theme="dark"] .post-body th { background: var(--dk-raised); }
 .dash-posts + .nav-editor { margin-top: 28px; }
 .nav-editor__suggest { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; font-size: .82rem; color: var(--gray-400); }
 .nav-editor__suggest .filter-btn { padding: 5px 12px; font-size: .78rem; }
-.nav-editor__save { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
-.nav-editor__save .field-hint { margin-top: 0; }
 .dash-post-row__meta { font-size: .8rem; color: var(--gray-400); overflow-wrap: anywhere; }
 .dash-post-row__actions { display: flex; gap: 8px; flex-shrink: 0; }
 
@@ -1824,3 +1822,23 @@ html[data-theme="dark"] .post-card:hover .post-card__title a { color: color-mix(
 .posts-table--cards tbody tr { cursor: pointer; }
 .posts-table--cards .posts-table__title a::after { content: ""; position: absolute; inset: 0; }
 .posts-table--cards .posts-table__actions { position: relative; z-index: 1; }
+
+/* ── Shared admin building blocks (components/admin/ui.tsx) ── */
+.editor-card__body > :last-child { margin-bottom: 0; }
+.editor-card--main { margin-bottom: 20px; }
+.editor-actions { display: flex; gap: 10px; margin-bottom: 18px; }
+.editor-actions .btn { flex: 1; justify-content: center; }
+.editor-view-link { margin-bottom: 18px; justify-content: center; }
+
+.settings-section-note.editor-slug { margin: 0 0 16px; }
+.editor-card__header--danger { color: var(--red); }
+.label-note { font-weight: 400; opacity: .6; }
+.settings-section-note--flush { margin: 0; }
+.tag-chip__count { opacity: .55; font-weight: 400; }
+.admin-save-bar { margin-top: 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.admin-save-bar .field-hint { margin-top: 0; }
+.taxonomy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.taxonomy-grid .editor-card { margin-bottom: 0; }
+@media (max-width: 1024px) { .taxonomy-grid { grid-template-columns: minmax(0, 1fr); } }
+.posts-table__date { white-space: nowrap; color: var(--gray-400); }
+.posts-table__wrap { overflow-wrap: anywhere; }

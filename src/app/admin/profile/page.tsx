@@ -10,7 +10,7 @@ export default async function ProfilePage() {
   const [user, settings] = await Promise.all([requirePageUser(), getSettings()]);
 
   return (
-    <AdminShell blogTitle={settings.blogTitle} active="profile" title="Your Profile">
+    <AdminShell active="profile" title="Your Profile">
       <div className="profile-grid">
         <ProfileForm
           username={user.username}

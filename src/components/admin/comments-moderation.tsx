@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { COMMENT_LIMITS, type CommentStatus } from "@/lib/comments";
 import { useToast } from "@/components/toast";
+import { apiSend } from "@/lib/admin-api";
+import { ConfirmDialog } from "./ui";
 
 export type AdminComment = {
   id: string;
@@ -45,50 +47,32 @@ export function CommentsModeration({
 
   const setStatus = async (c: AdminComment, next: CommentStatus, message: string) => {
     setBusyId(c.id);
-    const res = await fetch(`/api/comments/${c.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: next }),
-    });
+    const res = await apiSend(`/api/comments/${c.id}`, "PATCH", { status: next }, "Failed to update comment.");
     setBusyId(null);
-    if (res.ok) {
-      showToast(message);
-      router.refresh();
-    } else {
-      showToast("Failed to update comment.", "error");
-    }
+    if (!res.ok) return showToast(res.error, "error");
+    showToast(message);
+    router.refresh();
   };
 
   const sendReply = async (c: AdminComment) => {
     if (!reply.trim()) return;
     setBusyId(c.id);
-    const res = await fetch("/api/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId: c.postId, parentId: c.id, content: reply }),
-    });
+    const res = await apiSend("/api/comments", "POST", { postId: c.postId, parentId: c.id, content: reply }, "Failed to post reply.");
     setBusyId(null);
-    if (res.ok) {
-      setReply("");
-      setReplyId(null);
-      showToast(c.status === "pending" ? "Reply posted and comment approved." : "Reply posted.");
-      router.refresh();
-    } else {
-      const json = await res.json().catch(() => ({}));
-      showToast(json.error || "Failed to post reply.", "error");
-    }
+    if (!res.ok) return showToast(res.error, "error");
+    setReply("");
+    setReplyId(null);
+    showToast(c.status === "pending" ? "Reply posted and comment approved." : "Reply posted.");
+    router.refresh();
   };
 
   const handleDelete = async () => {
     if (!pendingDeleteId) return;
-    const res = await fetch(`/api/comments/${pendingDeleteId}`, { method: "DELETE" });
+    const res = await apiSend(`/api/comments/${pendingDeleteId}`, "DELETE", undefined, "Failed to delete comment.");
     setPendingDeleteId(null);
-    if (res.ok) {
-      showToast("Comment deleted.");
-      router.refresh();
-    } else {
-      showToast("Failed to delete comment.", "error");
-    }
+    if (!res.ok) return showToast(res.error, "error");
+    showToast("Comment deleted.");
+    router.refresh();
   };
 
   return (
@@ -204,20 +188,9 @@ export function CommentsModeration({
         )}
       </div>
 
-      <div className={`modal-overlay${pendingDeleteId ? " open" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) setPendingDeleteId(null); }}>
-        <div className="modal" role="dialog" aria-modal="true">
-          <h2 className="modal__title">Delete Comment?</h2>
-          <p className="modal__body">The comment and any replies to it will be permanently removed. This action cannot be undone.</p>
-          <div className="modal__actions">
-            <button className="btn btn--ghost" onClick={() => setPendingDeleteId(null)}>
-              Cancel
-            </button>
-            <button className="btn btn--danger" onClick={handleDelete}>
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConfirmDialog open={!!pendingDeleteId} title="Delete Comment?" onConfirm={handleDelete} onCancel={() => setPendingDeleteId(null)}>
+        The comment and any replies to it will be permanently removed. This action cannot be undone.
+      </ConfirmDialog>
 
       {toastElement}
     </>

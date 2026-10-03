@@ -2,7 +2,6 @@ import { desc } from "drizzle-orm";
 import { db, subscribers } from "@/db";
 import { missingMailerSettings } from "@/lib/mailer";
 import { livePosts } from "@/lib/posts";
-import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { NewsletterManager } from "@/components/admin/newsletter-manager";
 import { requirePageUser } from "@/lib/current-user";
@@ -11,8 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminNewsletterPage() {
   await requirePageUser("admin");
-  const [settings, subscriberRows, recentPosts] = await Promise.all([
-    getSettings(),
+  const [subscriberRows, recentPosts] = await Promise.all([
     db
       .select({
         id: subscribers.id,
@@ -32,7 +30,7 @@ export default async function AdminNewsletterPage() {
 
   return (
     <AdminShell
-      blogTitle={settings.blogTitle}
+     
       active="newsletter"
       title="Newsletter"
       actions={

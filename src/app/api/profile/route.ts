@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest) {
   if (displayName.length > PROFILE_LIMITS.displayName) {
     return NextResponse.json({ error: `Display name can be up to ${PROFILE_LIMITS.displayName} characters.` }, { status: 400 });
   }
-  // Admins without a name write as the blog's author from Settings; everyone else needs one.
+  // Admins without a name write as the blog's author from Pages → About; everyone else needs one.
   if (!displayName && !isAdmin(user)) {
     return NextResponse.json({ error: "Please enter the name readers should see on your posts." }, { status: 400 });
   }

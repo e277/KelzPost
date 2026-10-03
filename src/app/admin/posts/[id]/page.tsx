@@ -25,7 +25,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   const team = isAdmin(user) ? await teamMembers(settings.authorName) : [{ id: user.id, name: memberName(user, settings.authorName) }];
 
   return (
-    <AdminShell blogTitle={settings.blogTitle} active="dashboard" title="Edit Post">
+    <AdminShell active="dashboard" title="Edit Post">
       <PostEditor
         categories={categories}
         post={post}

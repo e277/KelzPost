@@ -77,8 +77,10 @@ managed from the built-in admin panel. No content is hardcoded.
 - Pages (admins only): edit the built-in About page (always at `/about`, with the
   author photo, name and bio, edited on the same screen), create custom pages, and set the
   header navigation (add any page in one click, reorder, or link anywhere)
-- Settings (admins only): branding, colors, hero, layout,
-  categories, social links, footer, password change
+- Categories & Tags (admins only): add or remove categories, and clean up tags you no
+  longer use
+- Settings (admins only): how the blog looks: title, colors, homepage hero and layout,
+  social links and footer. Passwords are changed under **Your Profile**
 - Works on phones, tablets and desktops: on smaller screens the sidebar becomes a
   scrolling menu bar and the dashboard lists posts as cards
 
@@ -293,12 +295,15 @@ src/
     admin/                    # Admin panel (protected by src/proxy.ts)
       login/                  # Login and first-run setup
       posts/[id]/preview/     # Draft preview
+      pages/, categories/     # Pages and header menu; categories and tags
       comments/, newsletter/  # Comment moderation, newsletter sending
+      settings/               # How the blog looks
       team/, profile/         # Team management, your own profile and password
     api/                      # Route handlers (auth, posts and their revisions, pages,
                               # categories, tags, comments, newsletter, uploads, settings,
                               # users, profile, views, health)
   components/                 # Shared UI (public and admin)
+    admin/ui.tsx              # Admin cards, fields, confirm dialog and chips
   db/
     schema.ts                 # Tables, relations and row types
     index.ts                  # Database client (db)
@@ -326,3 +331,9 @@ drizzle.config.ts             # drizzle-kit configuration
   `refreshPublicPages()` (`src/lib/revalidate.ts`) so the cached pages update straight
   away. Public queries should filter with `livePosts()` (`src/lib/posts.ts`) so drafts and
   scheduled posts stay hidden.
+- Admin pages each own one job (posts on the dashboard, pages and the header menu under
+  Pages, categories and tags under Categories, how the blog looks under Settings, your
+  own name and password under Your Profile). Build new admin screens from
+  `src/components/admin/ui.tsx` (`AdminCard`, `Field`, `ConfirmDialog`) and call the API
+  with `apiSend` from `src/lib/admin-api.ts`, so every page looks and handles errors the
+  same way. `AdminShell` loads the blog title itself and lists the menu in one `NAV` array.
