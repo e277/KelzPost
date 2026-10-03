@@ -1702,6 +1702,11 @@ html[data-theme="dark"] .post-body th { background: var(--dk-raised); }
 .dash-post-row__title:hover { color: var(--gold); }
 .dash-post-row__title .badge { margin-left: 6px; vertical-align: middle; }
 .dash-post-row--hint { font-size: .85rem; color: var(--gray-400); }
+.dash-posts + .nav-editor { margin-top: 28px; }
+.nav-editor__suggest { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; font-size: .82rem; color: var(--gray-400); }
+.nav-editor__suggest .filter-btn { padding: 5px 12px; font-size: .78rem; }
+.nav-editor__save { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+.nav-editor__save .field-hint { margin-top: 0; }
 .dash-post-row__meta { font-size: .8rem; color: var(--gray-400); overflow-wrap: anywhere; }
 .dash-post-row__actions { display: flex; gap: 8px; flex-shrink: 0; }
 
