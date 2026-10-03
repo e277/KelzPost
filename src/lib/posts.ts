@@ -1,6 +1,6 @@
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
-import { db, posts, postTags, tags, type Post, type Tag } from "@/db";
-import { slugify } from "@/lib/utils";
+import { db, posts, postTags, tags, type AdminUser, type Category, type Post, type Tag } from "@/db";
+import { readingTime, slugify, summarize } from "@/lib/utils";
 
 /**
  * SQL condition for posts visitors can see: published, with a publish date
@@ -96,4 +96,58 @@ export const ARCHIVE_PAGE_SIZE = 9;
 export function parsePage(value: string | string[] | undefined): number {
   const n = Number(Array.isArray(value) ? value[0] : value);
   return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
+/** Who a post is shown as written by, and their author page if they have one. */
+export type Byline = { name: string; href: string | null };
+
+type BylineUser = Pick<AdminUser, "displayName" | "slug"> | null | undefined;
+
+/**
+ * A guest author typed on the post wins; then the team member who wrote it,
+ * if they've set a display name; then the blog's author from Settings.
+ */
+export function postByline(post: { author: string; authorUser?: BylineUser }, defaultName: string): Byline {
+  const guest = post.author.trim();
+  if (guest) return { name: guest, href: null };
+  const user = post.authorUser;
+  if (user?.displayName.trim()) return { name: user.displayName.trim(), href: user.slug ? `/author/${user.slug}` : null };
+  return { name: defaultName, href: null };
+}
+
+/** Relations to load for post cards (pass as `with` to db.query.posts). */
+export const cardRelations = {
+  category: true,
+  authorUser: { columns: { displayName: true, slug: true } },
+} as const;
+
+/** What a post card needs, without the post body. */
+export type PostSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  /** The excerpt, or the opening of the post, up to 240 characters. */
+  summary: string;
+  coverImage: string;
+  category: { id: string; name: string } | null;
+  date: Date;
+  readingMinutes: number;
+  byline: Byline;
+};
+
+export function toPostSummary(
+  post: Post & { category: Category | null; authorUser?: BylineUser },
+  defaultAuthor: string
+): PostSummary {
+  return {
+    id: post.id,
+    slug: post.slug,
+    title: post.title,
+    summary: summarize(post.excerpt, post.content, 240),
+    coverImage: post.coverImage,
+    category: post.category ? { id: post.category.id, name: post.category.name } : null,
+    date: post.publishedAt || post.createdAt,
+    readingMinutes: readingTime(post.content),
+    byline: postByline(post, defaultAuthor),
+  };
 }

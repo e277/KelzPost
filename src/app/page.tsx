@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { livePosts } from "@/lib/posts";
+import { cardRelations, livePosts, toPostSummary } from "@/lib/posts";
 import { getSettings } from "@/lib/site";
 import { isMailerConfigured } from "@/lib/mailer";
 import { SiteHeader } from "@/components/site-header";
@@ -12,14 +12,16 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const settings = await getSettings();
 
-  const [posts, categories] = await Promise.all([
+  const [rows, categories] = await Promise.all([
     db.query.posts.findMany({
       where: livePosts(),
-      with: { category: true },
+      with: cardRelations,
       orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
     }),
     db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),
   ]);
+  // Cards only need a summary; post bodies stay on the server.
+  const posts = rows.map((p) => toPostSummary(p, settings.authorName));
 
   const heroLayout = settings.heroLayout === "split" ? "split" : "centered";
 

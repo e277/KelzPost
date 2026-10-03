@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db, posts } from "@/db";
 import { absoluteUrl, getSettings } from "@/lib/site";
-import { ARCHIVE_PAGE_SIZE, livePosts, parsePage } from "@/lib/posts";
+import { ARCHIVE_PAGE_SIZE, cardRelations, livePosts, parsePage, toPostSummary } from "@/lib/posts";
 import { slugify } from "@/lib/utils";
 import { ArchiveListing } from "@/components/archive-listing";
 
@@ -40,7 +40,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const page = Math.min(parsePage(query.page), pageCount);
   const rows = await db.query.posts.findMany({
     where,
-    with: { category: true },
+    with: cardRelations,
     orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
     limit: ARCHIVE_PAGE_SIZE,
     offset: (page - 1) * ARCHIVE_PAGE_SIZE,
@@ -53,7 +53,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       kind="Category"
       name={category.name}
       basePath={`/category/${slug}`}
-      posts={rows}
+      posts={rows.map((p) => toPostSummary(p, settings.authorName))}
       total={total}
       page={page}
       pageCount={pageCount}

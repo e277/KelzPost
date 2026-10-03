@@ -6,7 +6,7 @@ import { comments as commentsTable, db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { isMailerConfigured } from "@/lib/mailer";
 import { formatDate, summarize, readingTime } from "@/lib/utils";
-import { getPostTags, isLive, livePosts, withHeadingAnchors } from "@/lib/posts";
+import { cardRelations, getPostTags, isLive, livePosts, toPostSummary, withHeadingAnchors } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PostArticle } from "@/components/post-article";
@@ -110,7 +110,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   // Chronological neighbours and up to 3 related posts (same category first, then most recent).
   const published = await db.query.posts.findMany({
     where: livePosts(),
-    with: { category: true },
+    with: cardRelations,
     orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
   });
   const index = published.findIndex((p) => p.id === post.id);
@@ -194,7 +194,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             <h2 className="related__title">Keep reading</h2>
             <div className="posts-grid related__grid">
               {related.map((p) => (
-                <PostCard key={p.id} post={p} categories={categories} authorName={settings.authorName} />
+                <PostCard key={p.id} post={toPostSummary(p, settings.authorName)} categories={categories} />
               ))}
             </div>
           </section>
