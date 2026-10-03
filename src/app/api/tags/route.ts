@@ -15,7 +15,7 @@ export async function GET() {
   return NextResponse.json(rows);
 }
 
-/** Adds a tag from Admin → Categories & Tags (the post editor creates them too). */
+/** Adds a tag. (The post editor creates tags as part of saving a post.) */
 export async function POST(req: NextRequest) {
   const { error } = await requireUser("admin");
   if (error) return error;
