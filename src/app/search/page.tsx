@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSettings } from "@/lib/site";
+import { getSiteText } from "@/lib/site-text";
 import { searchPosts } from "@/lib/search";
 import { categoryHref, formatDate } from "@/lib/utils";
 import { SiteHeader } from "@/components/site-header";
@@ -37,10 +38,10 @@ export default async function SearchPage({ searchParams }: Props) {
             <span>Search</span>
           </nav>
           <span className="blog-hero__tag">Search</span>
-          <h1 className="archive-hero__title">{query ? `“${query}”` : "Search the blog"}</h1>
+          <h1 className="archive-hero__title">{query ? `“${query}”` : text.searchHeading}</h1>
           {query && (
             <p className="archive-hero__count">
-              {results.length === 0 ? "No articles found" : `${results.length} ${results.length === 1 ? "article" : "articles"}`}
+              {results.length === 0 ? text.searchNoResults : `${results.length} ${results.length === 1 ? "article" : "articles"}`}
             </p>
           )}
         </div>
@@ -52,10 +53,10 @@ export default async function SearchPage({ searchParams }: Props) {
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
-          <input type="search" name="q" defaultValue={query} placeholder="Search articles…" aria-label="Search articles" autoFocus={!query} required />
+          <input type="search" name="q" defaultValue={query} placeholder={text.searchPlaceholder} aria-label={text.searchPlaceholder} autoFocus={!query} required />
         </form>
         {!query && (
-          <p className="search-page__hint">Search every article by words in its title, summary or text. Use &quot;quotes&quot; for an exact phrase.</p>
+          <p className="search-page__hint">{text.searchHelp}</p>
         )}
 
         {query && results.length === 0 && (

@@ -10,18 +10,24 @@ type PostWithCategory = Post & { category: Category | null };
 export function PostArticle({
   post,
   categories,
+  postCategories,
   byline,
   tags = [],
   bodyHtml,
   toc = [],
+  tocTitle = "In this article",
 }: {
   post: PostWithCategory;
   categories: Category[];
+  /** Every category the post is filed under; defaults to its main category. */
+  postCategories?: Category[];
   byline: Byline;
   tags?: Tag[];
   /** Content to render instead of post.content (e.g. with heading anchors added). */
   bodyHtml?: string;
   toc?: TocItem[];
+  /** Heading of the table of contents (Admin → Configurations → Site text). */
+  tocTitle?: string;
 }) {
   const minutes = readingTime(post.content);
   const updated = post.publishedAt && post.updatedAt.getTime() - post.publishedAt.getTime() > 60_000;
@@ -32,14 +38,15 @@ export function PostArticle({
       {post.coverImage && <img src={post.coverImage} alt="" className="post-cover" />}
 
       <header className="post-header">
-        {post.category && (
+        {(postCategories ?? (post.category ? [post.category] : [])).map((category) => (
           <Link
-            href={categoryHref(post.category.name)}
-            className={`badge ${categoryBadgeClass(post.category.name, categories)}`}
+            key={category.id}
+            href={categoryHref(category.name)}
+            className={`badge ${categoryBadgeClass(category.name, categories)}`}
           >
-            {post.category.name}
+            {category.name}
           </Link>
-        )}
+        ))}
         <h1 className="post-title">{post.title}</h1>
         {post.excerpt && <p className="post-lede">{post.excerpt}</p>}
         <div className="post-meta">
@@ -66,7 +73,7 @@ export function PostArticle({
 
       {toc.length >= 3 && (
         <details className="post-toc" open>
-          <summary>In this article</summary>
+          <summary>{tocTitle}</summary>
           <ol>
             {toc.map((item) => (
               <li key={item.id} className={item.level === 3 ? "post-toc__sub" : undefined}>

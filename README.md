@@ -9,16 +9,17 @@ managed from the built-in admin panel. No content is hardcoded.
 
 **For readers**
 
-- Home page with category filters and "load more"
+- Home page (`/`): a hero and an optional introduction you write under **Pages → Home**,
+  then every post, newest first, with your categories as filters along the top
+  (`/?category=your-category`) and page numbers. Old `/blog` and `/category/your-category`
+  links forward there
 - Search (`/search`, or the search icon in the header): looks through the title, excerpt
   and full text of every published post, puts the best matches first and highlights the
   matching words (see [Search](#search))
 - Post pages with reading time, a reading-progress bar, a table of contents (built from
   the post's H2/H3 headings), an author box, share buttons (X, LinkedIn, Facebook, email,
   copy link, native share), previous/next links and related posts
-- Blog page (`/blog`): every post, newest first, with the categories as filters along
-  the top (`/blog?category=your-category`). Old `/category/your-category` links forward
-  there. Tag pages live at `/tag/your-tag`
+- Tag pages (`/tag/your-tag`)
 - Author pages (`/author/their-name`) with each writer's bio, photo and posts. Bylines
   link to them (see [Team and authors](#team-and-authors))
 - Rich posts: tables, code blocks with syntax highlighting, and YouTube/Vimeo embeds
@@ -26,7 +27,12 @@ managed from the built-in admin panel. No content is hardcoded.
   [Comments](#comments))
 - Light and dark mode: follows the reader's device setting, with a toggle in the header
   that remembers their choice (the admin panel always stays light)
-- Custom pages (`/your-page`) and an About page
+- Custom pages (`/your-page`) and an About page, each with an optional small label,
+  heading and subheading above the content, and their own search-engine title and
+  description
+- No fixed wording: the buttons, headings and messages around the site (post cards, the
+  post page, comments, newsletter signup, search and the 404 page) can be reworded under
+  **Configurations → Site text**
 - `sitemap.xml`, `robots.txt`, Open Graph/Twitter cards and
   `BlogPosting` structured data
 - Share images: posts without their own image get a generated preview card with the
@@ -64,7 +70,10 @@ managed from the built-in admin panel. No content is hardcoded.
 - Scheduled publishing: set the status to Published with a publish date in the future
   and the post goes live on its own at that time, within a minute (it shows as
   Scheduled until then)
-- Tags (up to 10 per post) alongside categories
+- Categories and tags (up to 10 of each per post), picked in the editor's Details card
+  from a list as you type, or typed in new and added with Enter. A post can be in
+  several categories: the first is shown on its card, and it is listed under each one
+  on the home page. Only admins can create a new category from the editor
 - Per-post SEO: meta title, meta description and social share image, with a search
   result preview. Left empty, they fall back to the title, excerpt and cover image
 - Author: each post is credited to the team member who wrote it (admins can change
@@ -76,19 +85,25 @@ managed from the built-in admin panel. No content is hardcoded.
 - Comments: approve, reply to, mark as spam or delete reader comments (admins only)
 - Newsletter: see subscribers, email a published post to them in one click, remove
   readers, export the list as CSV (admins only)
-- Pages (admins only): every page in one list: the built-in Home, Blog (always at
-  `/blog`; its filters are your categories) and About (always at `/about`, with the author
-  photo, name and bio, edited on the same screen) pages, plus your custom pages. The
+- Pages (admins only): every page in one list: the built-in Home (always at `/`: its
+  hero, an optional introduction above your posts, and its search-engine title and
+  description) and About (always at `/about`, with the author photo, name and bio,
+  edited on the same screen) pages, plus your custom pages. Home and About are edited
+  like any page but can't be deleted or moved. The
   header menu is made from these pages: tick **In menu** on a page to show it and use the
   arrows to order it. A new page goes into the menu when it is created (untick **Show in
   navigation** in its editor to leave it out), and its link follows the page's title and
   address and goes away when the page is deleted. The menu only links to the blog's own
-  pages. New sites start with Home, Blog and About in the menu
-- Categories & Tags (admins only): add or remove categories (they become the Blog page's
-  filters), and clean up tags you no longer use
+  pages. New sites start with Home and About in the menu
+- Categories & Tags (admins only): add, rename, reorder and delete categories (they
+  become the home page's filters, in that order), and add, rename and delete tags. Each
+  shows how many posts use it, and deleting one takes it off those posts without
+  deleting the posts
 - Configurations (admins only, formerly Settings): how the public site looks: title,
-  colors, homepage hero and layout, social links and footer. Each person changes their
-  own password under **Your Profile**
+  colors, homepage hero and posts layout, social links and footer, plus **Site text**,
+  the wording of buttons, headings and messages around the site (a blank box uses the
+  default; `{blogTitle}` inserts the blog's title). Each person changes their own
+  password under **Your Profile**
 - Works on phones, tablets and desktops: on smaller screens the admin sidebar becomes a
   hamburger menu like the blog's own header, and the dashboard lists posts as cards
 
@@ -246,11 +261,12 @@ Scheduled posts and drafts never appear.
 
 ## Caching
 
-The home page, post pages, custom pages, About page and sitemap are served from
+Post pages, custom pages, the About page and the sitemap are served from
 Vercel's cache instead of being rebuilt on every visit. Saving, publishing, unpublishing
 or deleting posts, and changing pages, categories, comments or settings, refreshes them
 straight away. They are also rebuilt at most once a minute so scheduled posts appear on
-time. The Blog page and the tag, author and search pages are always built fresh.
+time. The home page (with its filters and page numbers) and the tag, author and search
+pages are always built fresh.
 
 ## Comments
 
@@ -258,7 +274,7 @@ Comments are stored in your own database; there is no outside service to set up.
 
 - Readers leave a name and comment (email optional, never shown). New comments are
   **pending** until you approve them in **Admin → Comments**, where you can also reply,
-  mark as spam or delete. Replies written in **Admin → Comments** post under your own
+  edit the text, mark as spam or delete. Replies written in **Admin → Comments** post under your own
   team name with an "Author" badge, appear straight away, and approve the comment they
   answer. Anything typed into the comment form on the blog itself waits for approval,
   even if you are signed in to admin in the same browser.
@@ -300,12 +316,12 @@ How it works:
 ```
 src/
   app/
-    page.tsx                  # Home
+    page.tsx                  # Home: hero, intro and every post, filtered by category
     post/[slug]/page.tsx      # Post page
     [slug]/page.tsx           # Custom pages
     about/page.tsx            # About page
-    blog/                     # Blog page: all posts, filtered by category
-    category/[slug]/          # Forwards old category links to the Blog page
+    blog/                     # Forwards old /blog links to the home page
+    category/[slug]/          # Forwards old category links to the home page
     tag/[slug]/               # Tag archives
     author/[slug]/            # Author pages
     search/                   # Search results

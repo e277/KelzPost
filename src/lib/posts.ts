@@ -1,5 +1,5 @@
-import { and, eq, inArray, lte, sql } from "drizzle-orm";
-import { db, posts, postTags, tags, type AdminUser, type Category, type Post, type Settings, type Tag } from "@/db";
+import { and, asc, eq, inArray, lte, max, sql } from "drizzle-orm";
+import { categories, db, postCategories, posts, postTags, tags, type AdminUser, type Category, type Post, type Settings, type Tag } from "@/db";
 import { highlightCodeBlocks } from "@/lib/highlight";
 import { readingTime, slugify, summarize } from "@/lib/utils";
 
@@ -51,6 +51,48 @@ export async function setPostTags(postId: string, names: string[]): Promise<void
   const rows = await db.select({ id: tags.id }).from(tags).where(inArray(tags.slug, wanted.map((t) => t.slug)));
   await db.insert(postTags).values(rows.map((t) => ({ postId, tagId: t.id }))).onConflictDoNothing();
 }
+
+/** Normalises category names from a request body the same way as tags: trimmed, deduplicated, at most 10. */
+export const parseCategoryNames = parseTagNames;
+
+/**
+ * Files a post under the given categories, in that order; the first becomes the
+ * post's main category (shown on its card and page). Names that match no category
+ * create one when allowCreate is set (admins), and are skipped otherwise.
+ */
+export async function setPostCategories(postId: string, names: string[], allowCreate: boolean): Promise<void> {
+  const existing = await db.select().from(categories).orderBy(asc(categories.order));
+  const ids: string[] = [];
+  for (const name of names) {
+    let category = existing.find((c) => slugify(c.name) === slugify(name));
+    if (!category && allowCreate) {
+      const [{ last }] = await db.select({ last: max(categories.order) }).from(categories);
+      [category] = await db.insert(categories).values({ name, order: last === null ? 0 : last + 1 }).returning();
+      existing.push(category);
+    }
+    if (category && !ids.includes(category.id)) ids.push(category.id);
+  }
+
+  await db.delete(postCategories).where(eq(postCategories.postId, postId));
+  if (ids.length) await db.insert(postCategories).values(ids.map((categoryId) => ({ postId, categoryId })));
+  await db.update(posts).set({ categoryId: ids[0] ?? null }).where(eq(posts.id, postId));
+}
+
+/** A post's categories, main category first. */
+export async function getPostCategories(post: Pick<Post, "id" | "categoryId">): Promise<Category[]> {
+  const rows = await db.query.postCategories.findMany({ where: eq(postCategories.postId, post.id), with: { category: true } });
+  return rows
+    .map((r) => r.category)
+    .sort((a, b) => Number(b.id === post.categoryId) - Number(a.id === post.categoryId) || a.order - b.order);
+}
+
+/**
+ * SQL condition: the post is filed under the category (as its main category or another one).
+ * The subquery must not refer to the outer Post table: relational queries (db.query.posts)
+ * alias it, so a correlated reference to "Post"."id" fails with "missing FROM-clause entry".
+ */
+export const inCategory = (categoryId: string) =>
+  inArray(posts.id, db.select({ postId: postCategories.postId }).from(postCategories).where(eq(postCategories.categoryId, categoryId)));
 
 export async function getPostTags(postId: string): Promise<Tag[]> {
   const rows = await db.query.postTags.findMany({ where: eq(postTags.postId, postId), with: { tag: true } });

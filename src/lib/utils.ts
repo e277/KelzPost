@@ -12,9 +12,9 @@ export const RESERVED_PAGE_SLUGS = new Set([
   "og", "post", "robots.txt", "search", "sitemap.xml", "tag",
 ]);
 
-/** A category lives on the Blog page as a filter, so its address is /blog?category=its-slug. */
+/** A category is a filter on the home page's post list, so its address is /?category=its-slug. */
 export function categoryHref(categoryName: string): string {
-  return `/blog?category=${slugify(categoryName)}`;
+  return `/?category=${slugify(categoryName)}`;
 }
 
 export function formatDate(date: Date | string | null | undefined): string {

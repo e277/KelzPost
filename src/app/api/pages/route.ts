@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/current-user";
 import { syncPageNavLink } from "@/lib/navigation";
 import { refreshPublicPages } from "@/lib/revalidate";
 import { RESERVED_PAGE_SLUGS, slugify } from "@/lib/utils";
+import { readPageText } from "@/lib/site-pages";
 
 export async function GET() {
   const rows = await db.select().from(pages).orderBy(asc(pages.createdAt));
@@ -15,7 +16,8 @@ export async function POST(req: NextRequest) {
   const { error } = await requireUser("admin");
   if (error) return error;
 
-  const { title, content, showInNav } = await req.json();
+  const body = await req.json();
+  const { title, content, showInNav } = body;
   if (!title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
 
   const baseSlug = slugify(title.trim()) || "page";
@@ -25,7 +27,10 @@ export async function POST(req: NextRequest) {
     slug = `${baseSlug}-${attempt++}`;
   }
 
-  const [page] = await db.insert(pages).values({ title: title.trim(), slug, content: content || "" }).returning();
+  const [page] = await db
+    .insert(pages)
+    .values({ kind: "custom", title: title.trim(), slug, content: content || "", ...readPageText(body) })
+    .returning();
   // New pages go in the header menu unless the editor unticked "Show in navigation".
   const inNav = await syncPageNavLink(page, showInNav !== false);
   refreshPublicPages();
