@@ -9,11 +9,17 @@ managed from the built-in admin panel. No content is hardcoded.
 
 **For readers**
 
-- Home page with search (titles, excerpts and full text), category filters and "load more"
+- Home page with category filters and "load more"
+- Search (`/search`, or the search icon in the header): looks through the title, excerpt
+  and full text of every published post, puts the best matches first and highlights the
+  matching words (see [Search](#search))
 - Post pages with reading time, a reading-progress bar, a table of contents (built from
   the post's H2/H3 headings), an author box, share buttons (X, LinkedIn, Facebook, email,
   copy link, native share), previous/next links and related posts
 - Category pages (`/category/your-category`) and tag pages (`/tag/your-tag`)
+- Author pages (`/author/their-name`) with each writer's bio, photo and posts. Bylines
+  link to them (see [Team and authors](#team-and-authors))
+- Rich posts: tables, code blocks with syntax highlighting, and YouTube/Vimeo embeds
 - Comments on every post. New comments wait for your approval before they appear (see
   [Comments](#comments))
 - Light and dark mode: follows the reader's device setting, with a toggle in the header
@@ -23,6 +29,8 @@ managed from the built-in admin panel. No content is hardcoded.
   `BlogPosting` structured data
 - Share images: posts without their own image get a generated preview card with the
   title, author, date and reading time (`/post/<slug>/og`); the site has one too (`/og`)
+- Fast pages: public pages are served from a cache and refresh as soon as you change
+  something in the admin (see [Caching](#caching))
 - Responsive layout with a mobile menu, a footer that stays at the bottom of short
   pages, and a custom 404 page
 - Newsletter signup on the home page and every post, with email confirmation and a
@@ -31,28 +39,43 @@ managed from the built-in admin panel. No content is hardcoded.
 **For the admin**
 
 - First-run setup screen: the first visit to `/admin/login` creates the admin account
+- Team: admins add writers under **Admin → Team**. Writers sign in with their own
+  account and can only see and edit their own posts (see [Team and authors](#team-and-authors))
+- Profiles: everyone sets their public name, bio and photo, and changes their password,
+  under **Admin → Your Profile**
 - Login protection: a rate limit of 5 failed attempts per 15 minutes per IP, constant-time
   session checks, an optional "keep me signed in", and a redirect back to the page you
   were trying to open
 - Dashboard: stats (total, published, drafts, words written) that click through to a
-  filtered list and stay current across tabs, search, filter and sort, one-click
-  publish/unpublish, draft previews
-- Editor: rich text (headings, lists, quotes, links, images, code blocks, dividers),
-  editable URL slug, word count, unsaved-changes warning, Ctrl/⌘+S to save
+  filtered list and stay current across tabs, search, filter and sort (including
+  "Most read"), one-click publish/unpublish, draft previews
+- Readership: a dashboard panel with views over the last 30 days, the change from the
+  30 days before, and the most-read posts, plus a views column for every post (see
+  [Readership stats](#readership-stats))
+- Editor ([Tiptap](https://tiptap.dev)): headings, lists, quotes, links, images (drag,
+  drop or paste to upload, with alt text), tables, code blocks with a language picker,
+  YouTube/Vimeo embeds and dividers. Also an editable URL slug, word count,
+  unsaved-changes warning and Ctrl/⌘+S to save
+- Autosave and version history: drafts save on their own while you write, a backup in
+  the browser covers a closed tab, and every post keeps its last 50 versions to restore
+  from (see [Autosave and version history](#autosave-and-version-history))
 - Scheduled publishing: set the status to Published with a publish date in the future
-  and the post goes live on its own at that time (it shows as Scheduled until then)
+  and the post goes live on its own at that time, within a minute (it shows as
+  Scheduled until then)
 - Tags (up to 10 per post) alongside categories
 - Per-post SEO: meta title, meta description and social share image, with a search
   result preview. Left empty, they fall back to the title, excerpt and cover image
-- Author: posts show **Settings → Author Name**, bio and avatar. A post's own **Author**
-  field is only for guest writers and overrides the name on that post
+- Author: each post is credited to the team member who wrote it (admins can change
+  this with **Written by**). A post's own **Guest author** field is for one-off writers
+  and overrides the name on that post. See [Team and authors](#team-and-authors) for
+  which name a post shows
 - Images are resized and compressed in the browser, then stored on Vercel Blob (see
   step 6 of [Deploying to Vercel](#deploying-to-vercel))
-- Comments: approve, reply to, mark as spam or delete reader comments
+- Comments: approve, reply to, mark as spam or delete reader comments (admins only)
 - Newsletter: see subscribers, email a published post to them in one click, remove
-  readers, export the list as CSV
-- Settings: branding, colors, navigation, hero, layout, author, categories, social
-  links, footer, About content, password change
+  readers, export the list as CSV (admins only)
+- Settings (admins only): branding, colors, navigation, hero, layout, default author,
+  categories, social links, footer, About content, password change
 - Works on mobile
 
 ## Tech stack
@@ -61,6 +84,8 @@ managed from the built-in admin panel. No content is hardcoded.
 - **Drizzle ORM** with **PostgreSQL** via the `postgres` driver (e.g. [Neon](https://neon.tech) via the Vercel Marketplace)
 - **Vercel Blob** (`@vercel/blob`) for uploaded images
 - **Nodemailer** for newsletter email over SMTP
+- **Tiptap** for the post and page editor, **sanitize-html** to clean saved post HTML,
+  and **highlight.js** to color code blocks on the server
 - **bcryptjs** for password hashing; signed-cookie sessions (Web Crypto)
 - Plain CSS (`src/app/globals.css`)
 
@@ -85,8 +110,8 @@ managed from the built-in admin panel. No content is hardcoded.
    > Actions; the Vercel site never sees them. The "Production"/"Preview" environments
    > Vercel shows in GitHub are deployment records, not settings.
 4. **Deploy.** The build runs `drizzle-kit migrate` (the `vercel-build` script), so
-   the database tables are created automatically. Vercel only picks up new or changed
-   environment variables on the next deployment, so **redeploy after changing them**
+   the database tables are created and upgraded automatically. Vercel only picks up new
+   or changed environment variables on the next deployment, so **redeploy after changing them**
    (Deployments → ⋯ on the latest one → **Redeploy**).
 5. **Visit `/admin/login`** and create your admin account. If something is off, open
    `/api/health`: it shows whether the deployment can see `SESSION_SECRET` and the
@@ -142,14 +167,76 @@ throwaway Postgres it checks that every schema change has a committed migration,
 applies the migrations, seeds the database, and runs lint, typecheck and a production
 build. Vercel does the deploying.
 
+## Team and authors
+
+The first account (created at `/admin/login`) is an **admin**. Admins add more people
+under **Admin → Team** with a username, a temporary password, the name readers will see,
+and a role:
+
+| Role   | Can do |
+| ------ | ------ |
+| Admin  | Everything: all posts, pages, comments, newsletter, settings and the team |
+| Author | Write, publish and delete **their own** posts, and edit their own profile |
+
+Everyone fills in their public name, bio and photo, and changes their password, under
+**Admin → Your Profile**. Once a writer has a name, their posts link to their author page
+(`/author/their-name`), which lists everything they've published.
+
+Which name a post shows, in order:
+
+1. The post's **Guest author** field, if filled in (for one-off writers without an account)
+2. The name of the team member the post is credited to (**Written by**, which admins can
+   change)
+3. **Settings → Author Name**, for posts not credited to anyone
+
+You can't remove your own account or the last admin. Removing someone keeps their posts,
+which then show **Settings → Author Name**. On a blog that had a single admin before
+teams existed, the upgrade credits every existing post to that admin.
+
+## Readership stats
+
+The dashboard counts how often each published post is read. A view is counted when a
+reader stays on a post for a few seconds, at most once per post per browser per day.
+Search engines and other bots, and anyone signed in to the admin, aren't counted. Counts
+are stored per post per day in your own database, with no outside analytics service; the
+reader's browser only remembers which posts it has already counted today. Authors see the
+numbers for their own posts.
+
+## Search
+
+`/search?q=...` uses PostgreSQL full-text search over every published post, backed by a
+database index so it stays fast as the blog grows. Matches in the title rank above the
+excerpt, and the excerpt above the body. It understands English word forms ("writing"
+finds "write"), quoted phrases (`"dark mode"`), `or`, and `-word` to exclude a word.
+Scheduled posts and drafts never appear.
+
+## Autosave and version history
+
+- **Autosave:** a few seconds after you stop typing, a draft saves itself. Published posts
+  never autosave, so half-finished edits don't go live; save them yourself when ready.
+- **Backup:** the editor also keeps a copy in your browser. If the tab closes before a
+  save, reopening the post in the same browser offers to restore those edits.
+- **Version History:** every manual save, and an autosave at most every 10 minutes,
+  stores a version of the title, excerpt and body. The **Version History** card in the
+  editor lists the last 50, with who saved each one. **Restore** loads a version into the
+  editor; nothing changes until you save.
+
+## Caching
+
+The home page, post pages, custom pages, About page, RSS feed and sitemap are served from
+Vercel's cache instead of being rebuilt on every visit. Saving, publishing, unpublishing
+or deleting posts, and changing pages, categories, comments or settings, refreshes them
+straight away. They are also rebuilt at most once a minute so scheduled posts appear on
+time. Category, tag, author and search pages are always built fresh.
+
 ## Comments
 
 Comments are stored in your own database; there is no outside service to set up.
 
 - Readers leave a name and comment (email optional, never shown). New comments are
   **pending** until you approve them in **Admin → Comments**, where you can also reply,
-  mark as spam or delete. Your replies post as Settings → Author Name with an "Author"
-  badge, appear straight away, and approve the comment you replied to.
+  mark as spam or delete. Replies from anyone signed in post under their own team name
+  with an "Author" badge, appear straight away, and approve the comment they answer.
 - Spam protection: a hidden honeypot field, a minimum time to fill in the form, a limit
   of 5 comments per 10 minutes per IP, and comments with more than two links go straight
   to Spam.
@@ -193,6 +280,8 @@ src/
     [slug]/page.tsx           # Custom pages
     about/page.tsx            # About page
     category/[slug]/, tag/[slug]/  # Category and tag archives
+    author/[slug]/            # Author pages
+    search/                   # Search results
     newsletter/               # Newsletter confirm and unsubscribe pages
     og/, post/[slug]/og/      # Generated share images
     feed.xml/route.ts         # RSS feed
@@ -201,16 +290,20 @@ src/
       login/                  # Login and first-run setup
       posts/[id]/preview/     # Draft preview
       comments/, newsletter/  # Comment moderation, newsletter sending
-    api/                      # Route handlers (auth, posts, pages, categories, tags,
-                              # comments, newsletter, uploads, settings, health)
+      team/, profile/         # Team management, your own profile and password
+    api/                      # Route handlers (auth, posts and their revisions, pages,
+                              # categories, tags, comments, newsletter, uploads, settings,
+                              # users, profile, views, health)
   components/                 # Shared UI (public and admin)
   db/
     schema.ts                 # Tables, relations and row types
     index.ts                  # Database client (db)
     seed.ts, seed-data.json   # Initial settings and categories
     move-images-to-blob.ts    # npm run images:move
-  lib/                        # Auth, rate limit, site settings, posts, comments,
-                              # newsletter, mailer, Blob, utils
+  lib/                        # Auth, current user and roles, team, rate limit, site
+                              # settings, posts, search, readership stats, revisions,
+                              # page refreshes, HTML sanitizing, code highlighting,
+                              # comments, newsletter, mailer, Blob, utils
   proxy.ts                    # Redirects signed-out users away from /admin/*
 drizzle/                      # SQL migrations (generated by drizzle-kit)
 drizzle.config.ts             # drizzle-kit configuration
@@ -222,5 +315,10 @@ drizzle.config.ts             # drizzle-kit configuration
   Vercel Blob through `/api/uploads`; only their URLs are saved in the database. Without a
   Blob store they fall back to data URLs in the database, where each save must stay under
   Vercel's 4.5 MB request limit.
-- Post and page HTML comes from the admin editor and is rendered as-is. Only trusted
-  people should have admin access.
+- Post HTML is cleaned when it's saved: only the editor's own formatting, images, tables
+  and YouTube/Vimeo embeds are kept, so a writer can't add scripts or other embeds. Custom
+  pages and the About page can only be edited by admins and are rendered as written.
+- After changing anything that visitors see from an admin API route, call
+  `refreshPublicPages()` (`src/lib/revalidate.ts`) so the cached pages update straight
+  away. Public queries should filter with `livePosts()` (`src/lib/posts.ts`) so drafts and
+  scheduled posts stay hidden.
