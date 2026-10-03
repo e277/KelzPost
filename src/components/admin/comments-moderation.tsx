@@ -57,7 +57,7 @@ export function CommentsModeration({
   const sendReply = async (c: AdminComment) => {
     if (!reply.trim()) return;
     setBusyId(c.id);
-    const res = await apiSend("/api/comments", "POST", { postId: c.postId, parentId: c.id, content: reply }, "Failed to post reply.");
+    const res = await apiSend("/api/comments", "POST", { postId: c.postId, parentId: c.id, content: reply, asTeam: true }, "Failed to post reply.");
     setBusyId(null);
     if (!res.ok) return showToast(res.error, "error");
     setReply("");
