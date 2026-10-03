@@ -6,7 +6,7 @@ import { slugify } from "@/lib/utils";
 import { sanitizePostHtml } from "@/lib/sanitize";
 import { recordRevision } from "@/lib/revisions";
 import { refreshPublicPages } from "@/lib/revalidate";
-import { isLive, parsePublishDate, parseTagNames, setPostTags } from "@/lib/posts";
+import { isLive, parseCategoryNames, parsePublishDate, parseTagNames, setPostCategories, setPostTags } from "@/lib/posts";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -82,7 +82,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
       status,
       author: typeof body.author === "string" ? body.author.trim() : "",
       authorId,
-      categoryId: body.categoryId || null,
       ...(typeof body.seoTitle === "string" && { seoTitle: body.seoTitle.trim() }),
       ...(typeof body.seoDescription === "string" && { seoDescription: body.seoDescription.trim() }),
       ...(typeof body.ogImage === "string" && { ogImage: body.ogImage.trim() }),
@@ -92,6 +91,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const tagNames = parseTagNames(body.tags);
   if (tagNames) await setPostTags(id, tagNames);
+  // Only admins can create new categories from the post editor.
+  const categoryNames = parseCategoryNames(body.categories);
+  if (categoryNames) await setPostCategories(id, categoryNames, isAdmin(user));
 
   await recordRevision(id, { title, excerpt, content }, { savedBy: userDisplayName(user), autosave, before: existing });
   if (existing.status === "published" || status === "published") refreshPublicPages();

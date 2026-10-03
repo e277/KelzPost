@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, count, eq } from "drizzle-orm";
-import { db, posts } from "@/db";
+import { db, postCategories, posts } from "@/db";
 import { absoluteUrl, getSettings } from "@/lib/site";
-import { ARCHIVE_PAGE_SIZE, cardRelations, livePosts, parsePage, toPostSummary } from "@/lib/posts";
+import { ARCHIVE_PAGE_SIZE, cardRelations, inCategory, livePosts, parsePage, toPostSummary } from "@/lib/posts";
 import { categoryHref, slugify } from "@/lib/utils";
 import { ArchiveListing } from "@/components/archive-listing";
 
@@ -37,17 +37,23 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function BlogPage({ searchParams }: Props) {
   const query = await searchParams;
   const slug = readCategory(query.category);
-  const [settings, { categories, category }, counts] = await Promise.all([
+  // A post filed under several categories counts (and shows) under each of them.
+  const [settings, { categories, category }, counts, allCount] = await Promise.all([
     getSettings(),
     loadCategories(slug),
-    db.select({ categoryId: posts.categoryId, posts: count() }).from(posts).where(livePosts()).groupBy(posts.categoryId),
+    db
+      .select({ categoryId: postCategories.categoryId, posts: count() })
+      .from(postCategories)
+      .innerJoin(posts, eq(posts.id, postCategories.postId))
+      .where(livePosts())
+      .groupBy(postCategories.categoryId),
+    db.$count(posts, livePosts()),
   ]);
   if (slug && !category) notFound();
 
   const postsIn = new Map(counts.map((c) => [c.categoryId, c.posts]));
-  const allCount = counts.reduce((sum, c) => sum + c.posts, 0);
 
-  const where = category ? and(livePosts(), eq(posts.categoryId, category.id)) : livePosts();
+  const where = category ? and(livePosts(), inCategory(category.id)) : livePosts();
   const total = category ? postsIn.get(category.id) ?? 0 : allCount;
   const pageCount = Math.max(1, Math.ceil(total / ARCHIVE_PAGE_SIZE));
   const page = Math.min(parsePage(query.page), pageCount);

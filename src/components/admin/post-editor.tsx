@@ -12,6 +12,7 @@ import { uploadImage } from "@/lib/image";
 import { ImageUpload } from "./image-upload";
 import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
 import { RevisionHistory, type Revision } from "./revision-history";
+import { ComboBox } from "./combobox";
 import { AdminCard, ConfirmDialog } from "./ui";
 
 type PostWithCategory = Post & { category: Category | null };
@@ -29,10 +30,6 @@ function toLocalInput(date: Date | string | null | undefined): string {
   const d = new Date(date);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function parseTagInput(raw: string): string[] {
-  return raw.split(",").map((t) => t.trim()).filter(Boolean);
 }
 
 const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length;
@@ -57,6 +54,7 @@ function clearBackups(...ids: (string | null)[]) {
 export function PostEditor({
   categories,
   post,
+  postCategories = [],
   tags = [],
   allTags = [],
   team,
@@ -66,6 +64,8 @@ export function PostEditor({
 }: {
   categories: Category[];
   post: PostWithCategory | null;
+  /** Names of the categories the post is filed under, main category first. */
+  postCategories?: string[];
   tags?: string[];
   allTags?: string[];
   team: TeamMember[];
@@ -87,13 +87,13 @@ export function PostEditor({
   const [authorId, setAuthorId] = useState(post ? post.authorId || "" : currentUserId);
   // A guest author's name; empty means the team member the post is credited to.
   const [author, setAuthor] = useState(post?.author || "");
-  const [categoryId, setCategoryId] = useState(post?.categoryId || "");
+  const [categoryNames, setCategoryNames] = useState(postCategories);
   const [excerpt, setExcerpt] = useState(post?.excerpt || "");
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
   const [slug, setSlug] = useState(post?.slug || "");
   const [slugEdited, setSlugEdited] = useState(!!post);
   const [publishDate, setPublishDate] = useState(() => toLocalInput(post?.publishedAt));
-  const [tagInput, setTagInput] = useState(tags.join(", "));
+  const [tagNames, setTagNames] = useState(tags);
   const [seoTitle, setSeoTitle] = useState(post?.seoTitle || "");
   const [seoDescription, setSeoDescription] = useState(post?.seoDescription || "");
   const [ogImage, setOgImage] = useState(post?.ogImage || "");
@@ -175,10 +175,10 @@ export function PostEditor({
         status: newStatus,
         author: author.trim(),
         ...(canChooseAuthor && { authorId }),
-        categoryId: categoryId || null,
+        categories: categoryNames,
         slug: slug || slugify(title),
         publishedAt: publishDate ? new Date(publishDate).toISOString() : "",
-        tags: parseTagInput(tagInput),
+        tags: tagNames,
         seoTitle: seoTitle.trim(),
         seoDescription: seoDescription.trim(),
         ogImage: ogImage.trim(),
@@ -238,7 +238,7 @@ export function PostEditor({
       );
       if (newStatus === "published" && saved.publishedAt) setPublishDate(toLocalInput(saved.publishedAt));
     },
-    [saving, title, excerpt, editor, coverImage, author, canChooseAuthor, authorId, categoryId, slug, publishDate, tagInput, seoTitle, seoDescription, ogImage, postId, showToast]
+    [saving, title, excerpt, editor, coverImage, author, canChooseAuthor, authorId, categoryNames, slug, publishDate, tagNames, seoTitle, seoDescription, ogImage, postId, showToast]
   );
 
   // Drafts save themselves a few seconds after typing stops. Published posts don't,
@@ -422,34 +422,30 @@ export function PostEditor({
 
           <AdminCard title="Details">
               <div className="form-group">
-                <label htmlFor="postCategory">Category</label>
-                <select id="postCategory" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); markDirty(); }}>
-                  <option value="">Select category…</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                <label htmlFor="postCategory">Categories</label>
+                <ComboBox
+                  id="postCategory"
+                  values={categoryNames}
+                  options={categories.map((c) => c.name)}
+                  onChange={(next) => { setCategoryNames(next); markDirty(); }}
+                  placeholder={canChooseAuthor ? "Pick or type a new category" : "Pick a category"}
+                  // Only admins (who can also credit other authors) can add new categories.
+                  allowCreate={canChooseAuthor}
+                />
+                <small className="field-hint">
+                  The first one is shown on the post&apos;s card. The post appears under each of them on the Blog page.
+                </small>
               </div>
               <div className="form-group">
                 <label htmlFor="postTags">Tags</label>
-                <input
-                  type="text"
+                <ComboBox
                   id="postTags"
-                  list="postTagSuggestions"
-                  placeholder="e.g. travel, productivity"
-                  value={tagInput}
-                  onChange={(e) => { setTagInput(e.target.value); markDirty(); }}
+                  values={tagNames}
+                  options={allTags}
+                  onChange={(next) => { setTagNames(next); markDirty(); }}
+                  placeholder="Pick or type a new tag"
                 />
-                <datalist id="postTagSuggestions">
-                  {allTags
-                    .filter((t) => !parseTagInput(tagInput).some((x) => x.toLowerCase() === t.toLowerCase()))
-                    .map((t) => (
-                      <option key={t} value={tagInput.includes(",") ? `${tagInput.slice(0, tagInput.lastIndexOf(",") + 1)} ${t}` : t} />
-                    ))}
-                </datalist>
-                <small className="field-hint">Separate with commas. Each tag gets its own page.</small>
+                <small className="field-hint">Each tag gets its own page.</small>
               </div>
               <div className="form-group">
                 <label htmlFor="postSlug">URL slug</label>

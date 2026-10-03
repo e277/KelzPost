@@ -43,6 +43,13 @@
       "when": 1791046093225,
       "tag": "0005_multi_author_search_views_revisions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791066209480,
+      "tag": "0006_post_categories",
+      "breakpoints": true
     }
   ]
 }

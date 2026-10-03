@@ -9,6 +9,7 @@ type PostWithCategory = Post & { category: Category | null };
 export function PostArticle({
   post,
   categories,
+  postCategories,
   byline,
   tags = [],
   bodyHtml,
@@ -16,6 +17,8 @@ export function PostArticle({
 }: {
   post: PostWithCategory;
   categories: Category[];
+  /** Every category the post is filed under; defaults to its main category. */
+  postCategories?: Category[];
   byline: Byline;
   tags?: Tag[];
   /** Content to render instead of post.content (e.g. with heading anchors added). */
@@ -31,14 +34,15 @@ export function PostArticle({
       {post.coverImage && <img src={post.coverImage} alt="" className="post-cover" />}
 
       <header className="post-header">
-        {post.category && (
+        {(postCategories ?? (post.category ? [post.category] : [])).map((category) => (
           <Link
-            href={categoryHref(post.category.name)}
-            className={`badge ${categoryBadgeClass(post.category.name, categories)}`}
+            key={category.id}
+            href={categoryHref(category.name)}
+            className={`badge ${categoryBadgeClass(category.name, categories)}`}
           >
-            {post.category.name}
+            {category.name}
           </Link>
-        )}
+        ))}
         <h1 className="post-title">{post.title}</h1>
         {post.excerpt && <p className="post-lede">{post.excerpt}</p>}
         <div className="post-meta">

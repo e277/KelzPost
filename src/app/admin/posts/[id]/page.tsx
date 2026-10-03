@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { getSettings } from "@/lib/site";
-import { getPostTags } from "@/lib/posts";
+import { getPostCategories, getPostTags } from "@/lib/posts";
 import { canEditPost, isAdmin, requirePageUser } from "@/lib/current-user";
 import { memberName, teamMembers } from "@/lib/team";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -22,6 +22,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   ]);
 
   if (!post || !canEditPost(user, post)) notFound();
+  const postCategories = await getPostCategories(post);
   const team = isAdmin(user) ? await teamMembers(settings.authorName) : [{ id: user.id, name: memberName(user, settings.authorName) }];
 
   return (
@@ -29,6 +30,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
       <PostEditor
         categories={categories}
         post={post}
+        postCategories={postCategories.map((c) => c.name)}
         tags={postTags.map((t) => t.name)}
         allTags={allTags.map((t) => t.name)}
         team={team}

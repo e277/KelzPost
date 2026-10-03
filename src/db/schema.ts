@@ -196,6 +196,22 @@ export const postTags = pgTable(
   ]
 );
 
+// Every category a post is filed under. Post.categoryId keeps the first one, which
+// is the category shown on the post's card and page.
+export const postCategories = pgTable(
+  "PostCategory",
+  {
+    postId: text("postId").notNull(),
+    categoryId: text("categoryId").notNull(),
+  },
+  (t) => [
+    primaryKey({ name: "PostCategory_pkey", columns: [t.postId, t.categoryId] }),
+    index("PostCategory_categoryId_idx").on(t.categoryId),
+    foreignKey({ name: "PostCategory_postId_fkey", columns: [t.postId], foreignColumns: [posts.id] }).onDelete("cascade"),
+    foreignKey({ name: "PostCategory_categoryId_fkey", columns: [t.categoryId], foreignColumns: [categories.id] }).onDelete("cascade"),
+  ]
+);
+
 // Reader comments. New ones wait in the admin's queue ("pending") until approved;
 // only "approved" comments are shown on the post. Replies point at their parent.
 export const comments = pgTable(
@@ -258,6 +274,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   category: one(categories, { fields: [posts.categoryId], references: [categories.id] }),
   authorUser: one(adminUsers, { fields: [posts.authorId], references: [adminUsers.id] }),
   postTags: many(postTags),
+  postCategories: many(postCategories),
   comments: many(comments),
 }));
 
@@ -276,6 +293,12 @@ export const postTagsRelations = relations(postTags, ({ one }) => ({
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   posts: many(posts),
+  postCategories: many(postCategories),
+}));
+
+export const postCategoriesRelations = relations(postCategories, ({ one }) => ({
+  post: one(posts, { fields: [postCategories.postId], references: [posts.id] }),
+  category: one(categories, { fields: [postCategories.categoryId], references: [categories.id] }),
 }));
 
 export type AdminUser = typeof adminUsers.$inferSelect;

@@ -367,6 +367,7 @@ a.filter-btn { display: inline-flex; align-items: center; gap: 6px; text-decorat
 
 .post-header { margin-bottom: 40px; }
 .post-header .badge { margin-bottom: 16px; }
+.post-header .badge + .badge { margin-left: 6px; }
 .post-title {
   font-family: var(--font-display);
   font-size: clamp(1.8rem, 4vw, 2.8rem);
@@ -1836,3 +1837,32 @@ html[data-theme="dark"] .post-card:hover .post-card__title a { color: color-mix(
 .admin-mobilebar__nav a:hover { color: var(--white); background: rgba(255,255,255,.08); }
 .admin-mobilebar__nav a.active { background: var(--gold); color: var(--white); }
 .admin-mobilebar__nav > a:last-child { color: rgba(255,255,255,.55); border-top: 1px solid rgba(255,255,255,.08); border-radius: 0; margin-top: 6px; padding-top: 16px; }
+
+/* ── COMBOBOX (pick several or create, e.g. post categories and tags) ── */
+.combobox {
+  position: relative;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+  background: var(--white); cursor: text; transition: var(--transition);
+}
+.combobox:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,146,42,.12); }
+.combobox__chip { padding: 4px 6px 4px 12px; font-size: .8rem; }
+.form-group .combobox input {
+  flex: 1; min-width: 120px; width: auto;
+  border: none; box-shadow: none; padding: 5px 4px; background: transparent;
+}
+.form-group .combobox input:focus { box-shadow: none; }
+.combobox__list {
+  position: absolute; left: -1.5px; right: -1.5px; top: calc(100% + 4px); z-index: 20;
+  list-style: none; margin: 0; padding: 4px;
+  max-height: 220px; overflow-y: auto;
+  background: var(--white); border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-md, 0 8px 24px rgba(10,31,68,.12));
+}
+.combobox__option {
+  padding: 8px 10px; border-radius: 4px;
+  font-size: .88rem; color: var(--gray-800); cursor: pointer;
+}
+.combobox__option.is-active { background: var(--gray-100); color: var(--navy); }
+.combobox__option strong { color: var(--navy); }

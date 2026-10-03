@@ -64,7 +64,10 @@ managed from the built-in admin panel. No content is hardcoded.
 - Scheduled publishing: set the status to Published with a publish date in the future
   and the post goes live on its own at that time, within a minute (it shows as
   Scheduled until then)
-- Tags (up to 10 per post) alongside categories
+- Categories and tags (up to 10 of each per post), picked in the editor's Details card
+  from a list as you type, or typed in new and added with Enter. A post can be in
+  several categories: the first is shown on its card, and it is listed under each one
+  on the Blog page. Only admins can create a new category from the editor
 - Per-post SEO: meta title, meta description and social share image, with a search
   result preview. Left empty, they fall back to the title, excerpt and cover image
 - Author: each post is credited to the team member who wrote it (admins can change
