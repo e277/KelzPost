@@ -1,5 +1,7 @@
-import type { Category, Post } from "@/db/schema";
-import { formatDate, categoryBadgeClass, readingTime } from "@/lib/utils";
+import Link from "next/link";
+import type { Category, Post, Tag } from "@/db/schema";
+import type { TocItem } from "@/lib/posts";
+import { formatDate, categoryBadgeClass, readingTime, slugify } from "@/lib/utils";
 
 type PostWithCategory = Post & { category: Category | null };
 
@@ -8,13 +10,21 @@ export function PostArticle({
   post,
   categories,
   authorName,
+  tags = [],
+  bodyHtml,
+  toc = [],
 }: {
   post: PostWithCategory;
   categories: Category[];
   authorName: string;
+  tags?: Tag[];
+  /** Content to render instead of post.content (e.g. with heading anchors added). */
+  bodyHtml?: string;
+  toc?: TocItem[];
 }) {
   const minutes = readingTime(post.content);
   const updated = post.publishedAt && post.updatedAt.getTime() - post.publishedAt.getTime() > 60_000;
+  const html = bodyHtml ?? post.content;
 
   return (
     <article>
@@ -22,7 +32,12 @@ export function PostArticle({
 
       <header className="post-header">
         {post.category && (
-          <span className={`badge ${categoryBadgeClass(post.category.name, categories)}`}>{post.category.name}</span>
+          <Link
+            href={`/category/${slugify(post.category.name)}`}
+            className={`badge ${categoryBadgeClass(post.category.name, categories)}`}
+          >
+            {post.category.name}
+          </Link>
         )}
         <h1 className="post-title">{post.title}</h1>
         {post.excerpt && <p className="post-lede">{post.excerpt}</p>}
@@ -45,7 +60,30 @@ export function PostArticle({
         </div>
       </header>
 
-      <div className="post-body" dangerouslySetInnerHTML={{ __html: post.content || "<p>No content available.</p>" }} />
+      {toc.length >= 3 && (
+        <details className="post-toc" open>
+          <summary>In this article</summary>
+          <ol>
+            {toc.map((item) => (
+              <li key={item.id} className={item.level === 3 ? "post-toc__sub" : undefined}>
+                <a href={`#${item.id}`}>{item.text}</a>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+
+      <div className="post-body" dangerouslySetInnerHTML={{ __html: html || "<p>No content available.</p>" }} />
+
+      {tags.length > 0 && (
+        <ul className="post-tags" aria-label="Tags">
+          {tags.map((t) => (
+            <li key={t.id}>
+              <Link href={`/tag/${t.slug}`}>#{t.name}</Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </article>
   );
 }

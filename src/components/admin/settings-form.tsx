@@ -22,7 +22,17 @@ function parseNavLinks(raw: string): NavLink[] {
   return [{ label: "Home", href: "/" }, { label: "About", href: "/about" }];
 }
 
-export function SettingsForm({ settings, categories }: { settings: Settings; categories: Category[] }) {
+type TagSummary = { id: string; name: string; posts: number };
+
+export function SettingsForm({
+  settings,
+  categories,
+  tags,
+}: {
+  settings: Settings;
+  categories: Category[];
+  tags: TagSummary[];
+}) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
   const aboutRef = useRef<HTMLDivElement>(null);
@@ -58,6 +68,7 @@ export function SettingsForm({ settings, categories }: { settings: Settings; cat
 
   const [cats, setCats] = useState(categories);
   const [newCategory, setNewCategory] = useState("");
+  const [tagList, setTagList] = useState(tags);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -164,6 +175,17 @@ export function SettingsForm({ settings, categories }: { settings: Settings; cat
       router.refresh();
     } else {
       showToast("Failed to remove category.", "error");
+    }
+  };
+
+  const removeTag = async (tag: TagSummary) => {
+    if (tag.posts > 0 && !confirm(`Remove “${tag.name}” from ${tag.posts} post${tag.posts === 1 ? "" : "s"}?`)) return;
+    const res = await fetch(`/api/tags/${tag.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setTagList((t) => t.filter((x) => x.id !== tag.id));
+      router.refresh();
+    } else {
+      showToast("Failed to remove tag.", "error");
     }
   };
 
@@ -379,6 +401,29 @@ export function SettingsForm({ settings, categories }: { settings: Settings; cat
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
               />
               <button className="btn btn--ghost btn--sm" onClick={addCategory}>Add</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div className="editor-card settings-grid--full">
+          <div className="editor-card__header">Tags</div>
+          <div className="editor-card__body">
+            <p className="settings-section-note">
+              Tags are added from the post editor and each one gets its own page on the blog. Remove tags you no longer use here.
+            </p>
+            <div className="tag-list" style={{ marginBottom: 0 }}>
+              {tagList.length === 0 ? (
+                <p className="settings-section-note" style={{ margin: 0 }}>No tags yet. Add some to a post in the editor.</p>
+              ) : (
+                tagList.map((t) => (
+                  <span className="tag-chip" key={t.id}>
+                    {t.name}
+                    <span style={{ opacity: 0.55, fontWeight: 400 }}>{t.posts}</span>
+                    <button type="button" title="Remove" onClick={() => removeTag(t)}>✕</button>
+                  </span>
+                ))
+              )}
             </div>
           </div>
         </div>

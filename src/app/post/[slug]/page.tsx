@@ -4,16 +4,26 @@ import type { Metadata } from "next";
 import { db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { summarize, readingTime } from "@/lib/utils";
+import { getPostTags, isLive, livePosts, withHeadingAnchors } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PostArticle } from "@/components/post-article";
 import { PostCard } from "@/components/post-card";
 import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
+import { AuthorBox } from "@/components/author-box";
 
 async function getPublishedPost(slug: string) {
   const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
-  return post?.status === "published" ? post : null;
+  return post && isLive(post) ? post : null;
+}
+
+/** Share image: the post's own, then a hosted cover image, then the generated card. */
+function shareImage(post: { slug: string; ogImage: string; coverImage: string }): string {
+  if (post.ogImage) return post.ogImage;
+  // Data-URL images can't be used as Open Graph images.
+  if (post.coverImage && !post.coverImage.startsWith("data:")) return post.coverImage;
+  return absoluteUrl(`/post/${post.slug}/og`);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -21,18 +31,20 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const [settings, post] = await Promise.all([getSettings(), getPublishedPost(slug)]);
   if (!post) return { title: `Not Found — ${settings.blogTitle}` };
 
-  const description = summarize(post.excerpt, post.content);
+  const description = summarize(post.seoDescription || post.excerpt, post.content);
+  const title = post.seoTitle || post.title;
   const url = absoluteUrl(`/post/${post.slug}`);
-  // Data-URL images can't be used as Open Graph images.
-  const image = post.coverImage && !post.coverImage.startsWith("data:") ? post.coverImage : undefined;
+  const image = shareImage(post);
+  const tags = await getPostTags(post.id);
 
   return {
-    title: `${post.title} — ${settings.blogTitle}`,
+    title: `${title} — ${settings.blogTitle}`,
     description,
+    keywords: tags.length ? tags.map((t) => t.name) : undefined,
     alternates: { canonical: url },
     openGraph: {
       type: "article",
-      title: post.title,
+      title,
       description,
       url,
       siteName: settings.blogTitle,
@@ -40,13 +52,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       modifiedTime: post.updatedAt.toISOString(),
       authors: [post.author || settings.authorName],
       section: post.category?.name,
-      images: image ? [image] : undefined,
+      tags: tags.map((t) => t.name),
+      images: [image],
     },
     twitter: {
-      card: image ? "summary_large_image" : "summary",
-      title: post.title,
+      card: "summary_large_image",
+      title,
       description,
-      images: image ? [image] : undefined,
+      images: [image],
     },
   };
 }
@@ -61,9 +74,12 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
   if (!post) notFound();
 
+  const tags = await getPostTags(post.id);
+  const { html, toc } = withHeadingAnchors(post.content);
+
   // Chronological neighbours and up to 3 related posts (same category first, then most recent).
   const published = await db.query.posts.findMany({
-    where: (p, { eq }) => eq(p.status, "published"),
+    where: livePosts(),
     with: { category: true },
     orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
   });
@@ -80,10 +96,14 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: post.title,
-    description: summarize(post.excerpt, post.content),
+    description: summarize(post.seoDescription || post.excerpt, post.content),
+    image: shareImage(post),
+    keywords: tags.map((t) => t.name).join(", ") || undefined,
+    articleSection: post.category?.name,
     datePublished: (post.publishedAt || post.createdAt).toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: { "@type": "Person", name: post.author || settings.authorName },
+    author: { "@type": "Person", name: post.author || settings.authorName, url: absoluteUrl("/about") },
+    publisher: { "@type": "Organization", name: settings.blogTitle, url: absoluteUrl("/") },
     mainEntityOfPage: absoluteUrl(`/post/${post.slug}`),
     timeRequired: `PT${readingTime(post.content)}M`,
   };
@@ -102,7 +122,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             Back to Blog
           </Link>
 
-          <PostArticle post={post} categories={categories} authorName={settings.authorName} />
+          <PostArticle post={post} categories={categories} authorName={settings.authorName} tags={tags} bodyHtml={html} toc={toc} />
+
+          <AuthorBox settings={settings} name={post.author || settings.authorName} />
 
           <footer className="post-footer">
             <Link href="/" className="post-footer__back">

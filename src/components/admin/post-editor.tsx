@@ -11,6 +11,18 @@ import { ImageUpload } from "./image-upload";
 
 type PostWithCategory = Post & { category: Category | null };
 
+/** A Date as the "YYYY-MM-DDTHH:mm" local-time string a datetime-local input expects. */
+function toLocalInput(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function parseTagInput(raw: string): string[] {
+  return raw.split(",").map((t) => t.trim()).filter(Boolean);
+}
+
 const TOOLBAR_BUTTONS: { cmd: string; title: string; label: React.ReactNode }[] = [
   { cmd: "bold", title: "Bold", label: <b>B</b> },
   { cmd: "italic", title: "Italic", label: <i>I</i> },
@@ -21,10 +33,14 @@ export function PostEditor({
   categories,
   defaultAuthor,
   post,
+  tags = [],
+  allTags = [],
 }: {
   categories: Category[];
   defaultAuthor: string;
   post: PostWithCategory | null;
+  tags?: string[];
+  allTags?: string[];
 }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
@@ -38,6 +54,11 @@ export function PostEditor({
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
   const [slug, setSlug] = useState(post?.slug || "");
   const [slugEdited, setSlugEdited] = useState(!!post);
+  const [publishDate, setPublishDate] = useState(() => toLocalInput(post?.publishedAt));
+  const [tagInput, setTagInput] = useState(tags.join(", "));
+  const [seoTitle, setSeoTitle] = useState(post?.seoTitle || "");
+  const [seoDescription, setSeoDescription] = useState(post?.seoDescription || "");
+  const [ogImage, setOgImage] = useState(post?.ogImage || "");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [words, setWords] = useState(() => wordCount(post?.content || ""));
   const [dirty, setDirty] = useState(false);
@@ -117,6 +138,11 @@ export function PostEditor({
       author: author.trim() || defaultAuthor,
       categoryId: categoryId || null,
       slug: slug || slugify(title),
+      publishedAt: publishDate ? new Date(publishDate).toISOString() : "",
+      tags: parseTagInput(tagInput),
+      seoTitle: seoTitle.trim(),
+      seoDescription: seoDescription.trim(),
+      ogImage: ogImage.trim(),
     };
 
     const body = JSON.stringify(payload);
@@ -148,13 +174,26 @@ export function PostEditor({
 
     setStatus(newStatus);
     setDirty(false);
-    showToast(newStatus === "published" ? "Post published!" : "Draft saved.");
-
     const saved = await res.json();
+    const goesLiveLater = newStatus === "published" && saved.publishedAt && new Date(saved.publishedAt) > new Date();
+    showToast(
+      goesLiveLater
+        ? `Scheduled for ${new Date(saved.publishedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.`
+        : newStatus === "published"
+          ? "Post published!"
+          : "Draft saved."
+    );
+    if (newStatus === "published" && saved.publishedAt) setPublishDate(toLocalInput(saved.publishedAt));
+
     setSlug(saved.slug);
     if (!post) router.replace(`/admin/posts/${saved.id}`);
     router.refresh();
-  }, [saving, title, excerpt, coverImage, author, defaultAuthor, categoryId, slug, post, router, showToast]);
+  }, [saving, title, excerpt, coverImage, author, defaultAuthor, categoryId, slug, publishDate, tagInput, seoTitle, seoDescription, ogImage, post, router, showToast]);
+
+  const scheduled = !!publishDate && new Date(publishDate) > new Date();
+  const isLiveNow = post?.status === "published" && !!post.publishedAt && new Date(post.publishedAt) <= new Date();
+  const metaTitle = seoTitle.trim() || title.trim() || "Post title";
+  const metaDescription = seoDescription.trim() || excerpt.trim() || "Add an excerpt or meta description to control this text.";
 
   // Ctrl/Cmd+S saves, keeping the current status.
   useEffect(() => {
@@ -305,17 +344,17 @@ export function PostEditor({
                   {status === "published" ? "Unpublish" : "Save Draft"}
                 </button>
                 <button type="button" className="btn btn--primary btn--sm" style={{ flex: 1 }} disabled={saving} onClick={() => save("published")}>
-                  {status === "published" ? "Update" : "Publish"}
+                  {scheduled ? (status === "published" ? "Update Schedule" : "Schedule") : status === "published" ? "Update" : "Publish"}
                 </button>
               </div>
               {post && (
                 <Link
-                  href={post.status === "published" ? `/post/${slug}` : `/admin/posts/${post.id}/preview`}
+                  href={isLiveNow ? `/post/${slug}` : `/admin/posts/${post.id}/preview`}
                   target="_blank"
                   className="btn btn--ghost btn--sm btn--full"
                   style={{ marginBottom: 18, justifyContent: "center" }}
                 >
-                  {post.status === "published" ? "View live post ↗" : "Preview draft ↗"}
+                  {isLiveNow ? "View live post ↗" : "Preview post ↗"}
                 </Link>
               )}
               <div className="form-group">
@@ -324,6 +363,20 @@ export function PostEditor({
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="postPublishDate">Publish date</label>
+                <input
+                  type="datetime-local"
+                  id="postPublishDate"
+                  value={publishDate}
+                  onChange={(e) => { setPublishDate(e.target.value); markDirty(); }}
+                />
+                <small className="field-hint">
+                  {scheduled
+                    ? `Goes live automatically on ${new Date(publishDate).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.`
+                    : "Leave empty to publish now, or pick a future date to schedule."}
+                </small>
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label htmlFor="postAuthor">Author</label>
@@ -345,6 +398,25 @@ export function PostEditor({
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="postTags">Tags</label>
+                <input
+                  type="text"
+                  id="postTags"
+                  list="postTagSuggestions"
+                  placeholder="e.g. travel, productivity"
+                  value={tagInput}
+                  onChange={(e) => { setTagInput(e.target.value); markDirty(); }}
+                />
+                <datalist id="postTagSuggestions">
+                  {allTags
+                    .filter((t) => !parseTagInput(tagInput).some((x) => x.toLowerCase() === t.toLowerCase()))
+                    .map((t) => (
+                      <option key={t} value={tagInput.includes(",") ? `${tagInput.slice(0, tagInput.lastIndexOf(",") + 1)} ${t}` : t} />
+                    ))}
+                </datalist>
+                <small className="field-hint">Separate with commas. Each tag gets its own page.</small>
               </div>
               <div className="form-group">
                 <label htmlFor="postSlug">URL slug</label>
@@ -376,6 +448,52 @@ export function PostEditor({
             <div className="editor-card__header">Cover Image</div>
             <div className="editor-card__body">
               <ImageUpload value={coverImage} onChange={(v) => { setCoverImage(v); markDirty(); }} onError={(m) => showToast(m, "error")} />
+            </div>
+          </div>
+
+          <div className="editor-card">
+            <div className="editor-card__header">Search &amp; Social</div>
+            <div className="editor-card__body">
+              <div className="seo-preview" aria-label="Search result preview">
+                <div className="seo-preview__url">/post/{slug || "…"}</div>
+                <div className="seo-preview__title">{metaTitle}</div>
+                <div className="seo-preview__desc">{metaDescription}</div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="postSeoTitle">Meta title</label>
+                <input
+                  type="text"
+                  id="postSeoTitle"
+                  placeholder={title || "Defaults to the post title"}
+                  value={seoTitle}
+                  maxLength={70}
+                  onChange={(e) => { setSeoTitle(e.target.value); markDirty(); }}
+                />
+                <small className="field-hint">{seoTitle.length}/60 recommended. Leave empty to use the post title.</small>
+              </div>
+              <div className="form-group">
+                <label htmlFor="postSeoDescription">Meta description</label>
+                <textarea
+                  id="postSeoDescription"
+                  rows={3}
+                  placeholder="Defaults to the excerpt"
+                  value={seoDescription}
+                  maxLength={200}
+                  onChange={(e) => { setSeoDescription(e.target.value); markDirty(); }}
+                />
+                <small className="field-hint">{seoDescription.length}/160 recommended.</small>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label htmlFor="postOgImage">Social share image URL</label>
+                <input
+                  type="url"
+                  id="postOgImage"
+                  placeholder="https://…"
+                  value={ogImage}
+                  onChange={(e) => { setOgImage(e.target.value); markDirty(); }}
+                />
+                <small className="field-hint">Optional. Without one, a branded share image is generated from the title.</small>
+              </div>
             </div>
           </div>
 

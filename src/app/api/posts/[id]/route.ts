@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, posts } from "@/db";
 import { getSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
+import { isLive, parsePublishDate, parseTagNames, setPostTags } from "@/lib/posts";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const post = await db.query.posts.findFirst({ where: eq(posts.id, id), with: { category: true } });
 
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (post.status !== "published" && !session) {
+  if (!isLive(post) && !session) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -31,6 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!title) return NextResponse.json({ error: "Title is required." }, { status: 400 });
 
   const status = body.status === "published" ? "published" : "draft";
+  const publishDate = parsePublishDate(body.publishedAt);
 
   let slug = existing.slug;
   if (typeof body.slug === "string" && body.slug.trim()) {
@@ -53,9 +55,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       status,
       author: body.author || "",
       categoryId: body.categoryId || null,
-      publishedAt: status === "published" ? (existing.publishedAt || new Date()) : existing.publishedAt,
+      ...(typeof body.seoTitle === "string" && { seoTitle: body.seoTitle.trim() }),
+      ...(typeof body.seoDescription === "string" && { seoDescription: body.seoDescription.trim() }),
+      ...(typeof body.ogImage === "string" && { ogImage: body.ogImage.trim() }),
+      publishedAt: publishDate ?? (status === "published" ? existing.publishedAt || new Date() : existing.publishedAt),
     })
     .where(eq(posts.id, id));
+
+  const tagNames = parseTagNames(body.tags);
+  if (tagNames) await setPostTags(id, tagNames);
 
   const post = await db.query.posts.findFirst({ where: eq(posts.id, id), with: { category: true } });
   return NextResponse.json(post);

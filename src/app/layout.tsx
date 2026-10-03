@@ -21,7 +21,14 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(SITE_URL),
     title: settings.blogTitle,
     description: settings.tagline,
-    openGraph: { type: "website", siteName: settings.blogTitle, title: settings.blogTitle, description: settings.tagline },
+    openGraph: {
+      type: "website",
+      siteName: settings.blogTitle,
+      title: settings.blogTitle,
+      description: settings.tagline,
+      images: [`${SITE_URL}/og`],
+    },
+    twitter: { card: "summary_large_image" },
     alternates: {
       types: { "application/rss+xml": [{ url: `${SITE_URL}/feed.xml`, title: `${settings.blogTitle} RSS` }] },
     },
@@ -36,11 +43,14 @@ export default async function RootLayout({
   const settings = await getSettings();
 
   const themeVars = `:root{--navy:${settings.navyColor};--gold:${settings.accentColor};}`;
+  // Applies the visitor's saved (or system) colour scheme before first paint. The admin stays light.
+  const themeScript = `(function(){try{if(location.pathname.indexOf("/admin")===0)return;var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}})()`;
 
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`} suppressHydrationWarning>
       <head>
         <style dangerouslySetInnerHTML={{ __html: themeVars }} />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>{children}</body>
     </html>

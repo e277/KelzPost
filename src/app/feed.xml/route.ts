@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { livePosts } from "@/lib/posts";
 import { getSettings, absoluteUrl, SITE_URL } from "@/lib/site";
 import { escapeXml, summarize } from "@/lib/utils";
 
@@ -8,7 +9,7 @@ export async function GET() {
   const [settings, posts] = await Promise.all([
     getSettings(),
     db.query.posts.findMany({
-      where: (p, { eq }) => eq(p.status, "published"),
+      where: livePosts(),
       with: { category: true },
       orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
       limit: 30,
