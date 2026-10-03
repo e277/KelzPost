@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Category, Settings } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { ImageUpload } from "./image-upload";
+import { PasswordForm } from "./password-form";
 
 type NavLink = { label: string; href: string };
 
@@ -70,10 +72,6 @@ export function SettingsForm({
   const [newCategory, setNewCategory] = useState("");
   const [tagList, setTagList] = useState(tags);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
 
   useEffect(() => {
     if (aboutRef.current) aboutRef.current.innerHTML = settings.aboutContent || "";
@@ -186,36 +184,6 @@ export function SettingsForm({
       router.refresh();
     } else {
       showToast("Failed to remove tag.", "error");
-    }
-  };
-
-  const changePassword = async () => {
-    setPasswordError("");
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError("Please fill in all password fields.");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords do not match.");
-      return;
-    }
-    const res = await fetch("/api/auth/password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-    if (res.ok) {
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      showToast("Password updated.");
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setPasswordError(data.error || "Failed to update password.");
     }
   };
 
@@ -363,6 +331,10 @@ export function SettingsForm({
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label htmlFor="authorBio">Bio</label>
               <textarea id="authorBio" rows={3} placeholder="A short bio shown on the About page…" value={authorBio} onChange={(e) => setAuthorBio(e.target.value)} />
+              <small className="field-hint">
+                The blog&apos;s main author, shown on the About page and on posts by admins who haven&apos;t set a display name in{" "}
+                <Link href="/admin/profile">Your Profile</Link>. Other writers manage their own name and bio there.
+              </small>
             </div>
           </div>
         </div>
@@ -468,30 +440,7 @@ export function SettingsForm({
           </div>
         </div>
 
-        {/* Security */}
-        <div className="editor-card" id="security">
-          <div className="editor-card__header">Security</div>
-          <div className="editor-card__body">
-            <div className="form-group">
-              <label htmlFor="currentPassword">Current Password</label>
-              <input type="password" id="currentPassword" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label htmlFor="newPassword">New Password</label>
-              <input type="password" id="newPassword" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label htmlFor="confirmPassword">Confirm New Password</label>
-              <input type="password" id="confirmPassword" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-            </div>
-            <p className={`form-error${passwordError ? " visible" : ""}`} style={{ marginTop: 14 }}>
-              {passwordError}
-            </p>
-            <button className="btn btn--ghost btn--sm" style={{ marginTop: 10 }} onClick={changePassword}>
-              Change Password
-            </button>
-          </div>
-        </div>
+        <PasswordForm />
 
         {/* About Page */}
         <div className="editor-card settings-grid--full">

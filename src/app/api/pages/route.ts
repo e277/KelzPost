@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asc, eq } from "drizzle-orm";
 import { db, pages } from "@/db";
-import { getSession } from "@/lib/auth";
+import { requireUser } from "@/lib/current-user";
+import { refreshPublicPages } from "@/lib/revalidate";
 import { slugify } from "@/lib/utils";
 
 export async function GET() {
@@ -10,8 +11,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser("admin");
+  if (error) return error;
 
   const { title, content } = await req.json();
   if (!title?.trim()) return NextResponse.json({ error: "Title is required." }, { status: 400 });
@@ -24,5 +25,6 @@ export async function POST(req: NextRequest) {
   }
 
   const [page] = await db.insert(pages).values({ title: title.trim(), slug, content: content || "" }).returning();
+  refreshPublicPages();
   return NextResponse.json(page, { status: 201 });
 }

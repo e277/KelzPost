@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, posts, subscribers, type Post, type Settings } from "@/db";
+import { adminUsers, db, posts, subscribers, type Post, type Settings } from "@/db";
+import { postByline } from "@/lib/posts";
 import { sendMail } from "@/lib/mailer";
 import { absoluteUrl } from "@/lib/site";
 import { escapeXml, summarize } from "@/lib/utils";
@@ -64,13 +65,12 @@ ${button(settings, link, "Confirm subscription")}
   });
 }
 
-function postEmail(settings: Settings, post: Post, token: string) {
+function postEmail(settings: Settings, post: Post, author: string, token: string) {
   const url = absoluteUrl(`/post/${post.slug}`);
   const summary = summarize(post.excerpt, post.content, 300);
   const unsubscribe = unsubscribeUrl(token);
   // Data-URL images are blocked by most mail clients, so only hosted covers are included.
   const cover = post.coverImage && !post.coverImage.startsWith("data:") ? post.coverImage : "";
-  const author = post.author || settings.authorName;
 
   const body = `
 ${cover ? `<a href="${escapeXml(url)}"><img src="${escapeXml(cover)}" alt="" width="504" style="display:block;width:100%;max-width:504px;height:auto;border-radius:8px;margin:0 0 20px;"></a>` : ""}
@@ -134,12 +134,17 @@ export async function sendPostToSubscribers(settings: Settings, postId: string):
     return { ok: false, error: "There are no confirmed subscribers yet.", status: 400 };
   }
 
+  const authorUser = post.authorId
+    ? await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, post.authorId), columns: { displayName: true, slug: true } })
+    : null;
+  const author = postByline({ author: post.author, authorUser }, settings.authorName).name;
+
   let sent = 0;
   let failed = 0;
   let firstError = "";
   for (const reader of readers) {
     try {
-      await sendMail({ to: reader.email, ...postEmail(settings, post, reader.token) });
+      await sendMail({ to: reader.email, ...postEmail(settings, post, author, reader.token) });
       sent++;
     } catch (err) {
       failed++;

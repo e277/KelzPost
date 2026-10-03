@@ -4,8 +4,16 @@ import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { highlightCodeBlocks } from "@/lib/highlight";
 
-export const dynamic = "force-dynamic";
+// Served from cache and rebuilt in the background at most once a minute (so
+// scheduled posts appear on time); edits in the admin refresh it straight away.
+export const revalidate = 60;
+
+// Pages are built the first time they're visited, then cached (see revalidate).
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -36,7 +44,7 @@ export default async function CustomPage({ params }: { params: Promise<{ slug: s
             <h1 className="about-title">{page.title}</h1>
           </div>
           {page.content ? (
-            <div className="about-body" dangerouslySetInnerHTML={{ __html: page.content }} />
+            <div className="about-body post-body" dangerouslySetInnerHTML={{ __html: highlightCodeBlocks(page.content) }} />
           ) : (
             <div className="about-empty">This page has no content yet.</div>
           )}

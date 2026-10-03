@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { requireUser } from "@/lib/current-user";
 import { MAX_UPLOAD_BYTES, blobConfigured, isAllowedImageType, storeImage } from "@/lib/blob";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser();
+  if (error) return error;
 
   // The editor falls back to saving the image inside the post when this is 501.
   if (!blobConfigured()) {

@@ -32,6 +32,12 @@ export function SiteHeader({ settings }: { settings: Settings }) {
         </Link>
         <div className="blog-nav__end">
           <NavLinks links={navLinks} />
+          <Link href="/search" className="theme-toggle" aria-label="Search articles" title="Search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="18" height="18" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </Link>
           <ThemeToggle />
         </div>
       </nav>

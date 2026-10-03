@@ -1,5 +1,17 @@
-import { relations } from "drizzle-orm";
-import { boolean, foreignKey, index, integer, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import {
+  boolean,
+  date,
+  foreignKey,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 
 const id = () =>
   text("id")
@@ -13,14 +25,24 @@ const updatedAt = () =>
     .$defaultFn(() => new Date())
     .$onUpdate(() => new Date());
 
+// People who can sign in to the admin. "admin" can do everything; "author"
+// can only write and manage their own posts. The profile fields are shown on
+// their posts; a blank display name falls back to Settings → Author.
 export const adminUsers = pgTable(
   "AdminUser",
   {
     id: id(),
     username: text("username").notNull(),
     passwordHash: text("passwordHash").notNull(),
+    role: text("role").notNull().default("admin"),
+    displayName: text("displayName").notNull().default(""),
+    // Public URL of the author page (/author/<slug>); set from the display name.
+    slug: text("slug"),
+    bio: text("bio").notNull().default(""),
+    avatar: text("avatar").notNull().default(""),
+    createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("AdminUser_username_key").on(t.username)]
+  (t) => [uniqueIndex("AdminUser_username_key").on(t.username), uniqueIndex("AdminUser_slug_key").on(t.slug)]
 );
 
 export const settings = pgTable("Settings", {
@@ -71,6 +93,14 @@ export const categories = pgTable(
   (t) => [uniqueIndex("Category_name_key").on(t.name)]
 );
 
+/**
+ * Full-text search document for a post: the title counts most, then the
+ * excerpt, then the body with its HTML tags removed. Search queries must use
+ * this same expression so Postgres can use the index on it.
+ */
+export const postSearchDocument = (t: { title: AnyPgColumn; excerpt: AnyPgColumn; content: AnyPgColumn }) =>
+  sql`(setweight(to_tsvector('english', ${t.title}), 'A') || setweight(to_tsvector('english', ${t.excerpt}), 'B') || setweight(to_tsvector('english', regexp_replace(${t.content}, '<[^>]+>', ' ', 'g')), 'C'))`;
+
 export const posts = pgTable(
   "Post",
   {
@@ -81,7 +111,10 @@ export const posts = pgTable(
     content: text("content").notNull().default(""),
     coverImage: text("coverImage").notNull().default(""),
     status: text("status").notNull().default("draft"),
+    // Guest author name; when set it replaces the writer's own name on the post.
     author: text("author").notNull().default(""),
+    // The team member who wrote the post.
+    authorId: text("authorId"),
     categoryId: text("categoryId"),
     // Optional overrides for search engines and link previews.
     seoTitle: text("seoTitle").notNull().default(""),
@@ -96,9 +129,46 @@ export const posts = pgTable(
   (t) => [
     uniqueIndex("Post_slug_key").on(t.slug),
     index("Post_status_publishedAt_idx").on(t.status, t.publishedAt),
+    index("Post_authorId_idx").on(t.authorId),
+    index("Post_search_idx").using("gin", postSearchDocument(t)),
     foreignKey({ name: "Post_categoryId_fkey", columns: [t.categoryId], foreignColumns: [categories.id] })
       .onDelete("set null")
       .onUpdate("cascade"),
+    foreignKey({ name: "Post_authorId_fkey", columns: [t.authorId], foreignColumns: [adminUsers.id] }).onDelete("set null"),
+  ]
+);
+
+// Daily view counts per post, for the dashboard's readership stats.
+export const postViews = pgTable(
+  "PostView",
+  {
+    postId: text("postId").notNull(),
+    day: date("day", { mode: "string" }).notNull(),
+    views: integer("views").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ name: "PostView_pkey", columns: [t.postId, t.day] }),
+    index("PostView_day_idx").on(t.day),
+    foreignKey({ name: "PostView_postId_fkey", columns: [t.postId], foreignColumns: [posts.id] }).onDelete("cascade"),
+  ]
+);
+
+// Saved versions of a post's title, excerpt and body, so earlier versions can be restored.
+export const postRevisions = pgTable(
+  "PostRevision",
+  {
+    id: id(),
+    postId: text("postId").notNull(),
+    title: text("title").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    content: text("content").notNull().default(""),
+    // Display name or username of whoever saved this version.
+    savedBy: text("savedBy").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("PostRevision_postId_createdAt_idx").on(t.postId, t.createdAt),
+    foreignKey({ name: "PostRevision_postId_fkey", columns: [t.postId], foreignColumns: [posts.id] }).onDelete("cascade"),
   ]
 );
 
@@ -180,8 +250,13 @@ export const loginAttempts = pgTable("LoginAttempt", {
   resetAt: timestamp("resetAt", { precision: 3, mode: "date" }).notNull(),
 });
 
+export const adminUsersRelations = relations(adminUsers, ({ many }) => ({
+  posts: many(posts),
+}));
+
 export const postsRelations = relations(posts, ({ one, many }) => ({
   category: one(categories, { fields: [posts.categoryId], references: [categories.id] }),
+  authorUser: one(adminUsers, { fields: [posts.authorId], references: [adminUsers.id] }),
   postTags: many(postTags),
   comments: many(comments),
 }));
@@ -211,4 +286,5 @@ export type Post = typeof posts.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type Subscriber = typeof subscribers.$inferSelect;
+export type PostRevision = typeof postRevisions.$inferSelect;
 export type PostWithCategory = Post & { category: Category | null };

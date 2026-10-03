@@ -1,48 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Page } from "@/db/schema";
 import { useToast } from "@/components/toast";
+import { uploadImage } from "@/lib/image";
 import { slugify } from "@/lib/utils";
-
-const TOOLBAR: { cmd: string; title: string; label: React.ReactNode }[] = [
-  { cmd: "bold", title: "Bold", label: <b>B</b> },
-  { cmd: "italic", title: "Italic", label: <i>I</i> },
-  { cmd: "underline", title: "Underline", label: <u>U</u> },
-];
+import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
 
 export function PageEditor({ page }: { page: Page | null }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
-  const editorRef = useRef<HTMLDivElement>(null);
+  const { editor, insertImages } = useRichTextEditor({
+    content: page?.content || "",
+    placeholder: "Write your page content here…",
+    uploadImage,
+    onError: (m) => showToast(m, "error"),
+  });
 
   const [title, setTitle] = useState(page?.title || "");
   const [slug, setSlug] = useState(page?.slug || "");
   const [slugEdited, setSlugEdited] = useState(!!page);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  useEffect(() => {
-    if (editorRef.current && page?.content) {
-      editorRef.current.innerHTML = page.content;
-    }
-  }, [page]);
-
-  const runCmd = (cmd: string) => {
-    editorRef.current?.focus();
-    if (cmd === "h2") document.execCommand("formatBlock", false, "h2");
-    else if (cmd === "h3") document.execCommand("formatBlock", false, "h3");
-    else if (cmd === "blockquote") document.execCommand("formatBlock", false, "blockquote");
-    else if (cmd === "createLink") {
-      const url = prompt("Enter URL:");
-      if (url) document.execCommand("createLink", false, url);
-    } else document.execCommand(cmd, false);
-  };
-
   const save = async () => {
     if (!title.trim()) { showToast("Please add a title.", "error"); return; }
 
-    const payload = { title: title.trim(), slug: slug.trim(), content: editorRef.current?.innerHTML || "" };
+    const payload = { title: title.trim(), slug: slug.trim(), content: !editor || editor.isEmpty ? "" : editor.getHTML() };
     const res = await fetch(page ? `/api/pages/${page.id}` : "/api/pages", {
       method: page ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -100,47 +84,7 @@ export function PageEditor({ page }: { page: Page | null }) {
                 />
               </div>
 
-              <div className="editor-toolbar">
-                {TOOLBAR.map((b) => (
-                  <button key={b.cmd} type="button" className="toolbar-btn" title={b.title} onMouseDown={(e) => { e.preventDefault(); runCmd(b.cmd); }}>
-                    {b.label}
-                  </button>
-                ))}
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Heading 2" onMouseDown={(e) => { e.preventDefault(); runCmd("h2"); }}>H2</button>
-                <button type="button" className="toolbar-btn" title="Heading 3" onMouseDown={(e) => { e.preventDefault(); runCmd("h3"); }}>H3</button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Bullet List" onMouseDown={(e) => { e.preventDefault(); runCmd("insertUnorderedList"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M4 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM7 4h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2z" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Numbered List" onMouseDown={(e) => { e.preventDefault(); runCmd("insertOrderedList"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M3 4h1v3H3V4zm0 5h1.5l-1.5 2h1.5v1H3v-1l1.5-2H3V9zm1 6H3v-1h2v4H3v-1h1v-2zM7 4h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2z" />
-                  </svg>
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Blockquote" onMouseDown={(e) => { e.preventDefault(); runCmd("blockquote"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M6 3a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3H5a1 1 0 0 0 1 1h1a1 1 0 0 1 0 2H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zm8 0a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3h-1a1 1 0 0 0 1 1h1a1 1 0 0 1 0 2h-1a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Insert Link" onMouseDown={(e) => { e.preventDefault(); runCmd("createLink"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Clear Formatting" onMouseDown={(e) => { e.preventDefault(); runCmd("removeFormat"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M6 4l8 12M4 4h12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div ref={editorRef} className="editor-area" contentEditable data-placeholder="Write your page content here…" />
+              <RichTextEditor editor={editor} insertImages={insertImages} onError={(m) => showToast(m, "error")} />
             </div>
           </div>
         </div>

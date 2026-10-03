@@ -1,17 +1,20 @@
 import type { MetadataRoute } from "next";
-import { db } from "@/db";
+import { and, isNotNull, ne } from "drizzle-orm";
+import { adminUsers, db } from "@/db";
 import { absoluteUrl } from "@/lib/site";
 import { livePosts } from "@/lib/posts";
 import { slugify } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+// Cached; rebuilt at most once a minute, or straight away after an edit.
+export const revalidate = 60;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [posts, pages, categories, tags] = await Promise.all([
+  const [posts, pages, categories, tags, authors] = await Promise.all([
     db.query.posts.findMany({ where: livePosts(), columns: { slug: true, updatedAt: true } }),
     db.query.pages.findMany({ columns: { slug: true, updatedAt: true } }),
     db.query.categories.findMany({ columns: { name: true } }),
     db.query.tags.findMany({ columns: { slug: true } }),
+    db.query.adminUsers.findMany({ where: and(isNotNull(adminUsers.slug), ne(adminUsers.displayName, "")), columns: { slug: true } }),
   ]);
 
   return [
@@ -21,5 +24,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...pages.map((p) => ({ url: absoluteUrl(`/${p.slug}`), lastModified: p.updatedAt, priority: 0.5 })),
     ...categories.map((c) => ({ url: absoluteUrl(`/category/${slugify(c.name)}`), changeFrequency: "weekly" as const, priority: 0.6 })),
     ...tags.map((t) => ({ url: absoluteUrl(`/tag/${t.slug}`), changeFrequency: "weekly" as const, priority: 0.4 })),
+    ...authors.map((a) => ({ url: absoluteUrl(`/author/${a.slug}`), changeFrequency: "weekly" as const, priority: 0.4 })),
   ];
 }

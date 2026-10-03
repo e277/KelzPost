@@ -1,23 +1,20 @@
 import Link from "next/link";
-import type { Category, Post } from "@/db/schema";
-import { formatDate, categoryBadgeClass, readingTime, slugify, summarize } from "@/lib/utils";
-
-type PostWithCategory = Post & { category: Category | null };
+import type { Category } from "@/db/schema";
+import type { PostSummary } from "@/lib/posts";
+import { formatDate, categoryBadgeClass, slugify, summarize } from "@/lib/utils";
 
 export function PostCard({
   post,
   categories,
   featured,
-  authorName,
   layout = "grid",
 }: {
-  post: PostWithCategory;
-  categories: Category[];
+  post: PostSummary;
+  categories: Pick<Category, "name">[];
   featured?: boolean;
-  authorName: string;
   layout?: "grid" | "list";
 }) {
-  const excerpt = summarize(post.excerpt, post.content, featured ? 240 : 150);
+  const excerpt = featured ? post.summary : summarize(post.summary, "", 150);
   return (
     <article className={`post-card${featured ? " post-card--featured" : ""}${layout === "list" ? " post-card--list" : ""}`}>
       <div className="post-card__image">
@@ -43,16 +40,18 @@ export function PostCard({
       </div>
       <div className="post-card__body">
         <div className="post-card__meta">
-          <span>{formatDate(post.publishedAt || post.createdAt)}</span>
+          <span>{formatDate(post.date)}</span>
           <span className="post-card__meta-dot" />
-          <span>{readingTime(post.content)} min read</span>
+          <span>{post.readingMinutes} min read</span>
         </div>
         <h2 className="post-card__title">
           <Link href={`/post/${post.slug}`}>{post.title}</Link>
         </h2>
         {excerpt && <p className="post-card__excerpt">{excerpt}</p>}
         <div className="post-card__footer">
-          <span className="post-card__author">By {post.author || authorName}</span>
+          <span className="post-card__author">
+            By {post.byline.href ? <Link href={post.byline.href}>{post.byline.name}</Link> : post.byline.name}
+          </span>
           <Link href={`/post/${post.slug}`} className="post-card__read-more" aria-label={`Read more: ${post.title}`}>
             Read More →
           </Link>

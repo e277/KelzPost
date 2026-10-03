@@ -3,10 +3,12 @@ import { db } from "@/db";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { formatDate } from "@/lib/utils";
+import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPagesPage() {
+  await requirePageUser("admin");
   const [settings, pages] = await Promise.all([
     getSettings(),
     db.query.pages.findMany({ orderBy: (p, { asc }) => asc(p.createdAt) }),

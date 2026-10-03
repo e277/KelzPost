@@ -1,15 +1,20 @@
 import Link from "next/link";
-import type { Category, PostWithCategory, Settings } from "@/db/schema";
+import type { Category, Settings } from "@/db/schema";
+import type { PostSummary } from "@/lib/posts";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { PostCard } from "./post-card";
 
-/** Shared layout for category and tag archives: banner, post grid and pagination. */
+const CRUMBS = { Category: "Categories", Tag: "Tags", Author: "Authors" } as const;
+
+/** Shared layout for category, tag and author archives: banner, post grid and pagination. */
 export function ArchiveListing({
   settings,
   categories,
   kind,
   name,
+  bio,
+  avatar,
   basePath,
   posts,
   total,
@@ -18,10 +23,13 @@ export function ArchiveListing({
 }: {
   settings: Settings;
   categories: Category[];
-  kind: "Category" | "Tag";
+  kind: keyof typeof CRUMBS;
   name: string;
+  /** Author archives only. */
+  bio?: string;
+  avatar?: string;
   basePath: string;
-  posts: PostWithCategory[];
+  posts: PostSummary[];
   total: number;
   page: number;
   pageCount: number;
@@ -37,10 +45,12 @@ export function ArchiveListing({
           <nav className="breadcrumbs" aria-label="Breadcrumb">
             <Link href="/">Home</Link>
             <span aria-hidden="true">/</span>
-            <span>{kind === "Tag" ? "Tags" : "Categories"}</span>
+            <span>{CRUMBS[kind]}</span>
           </nav>
+          {avatar && <img src={avatar} alt="" className="archive-hero__avatar" />}
           <span className="blog-hero__tag">{kind}</span>
           <h1 className="archive-hero__title">{kind === "Tag" ? `#${name}` : name}</h1>
+          {bio && <p className="archive-hero__bio">{bio}</p>}
           <p className="archive-hero__count">
             {total} {total === 1 ? "article" : "articles"}
           </p>
@@ -62,7 +72,7 @@ export function ArchiveListing({
         ) : (
           <div className="posts-grid">
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} categories={categories} authorName={settings.authorName} />
+              <PostCard key={post.id} post={post} categories={categories} />
             ))}
           </div>
         )}

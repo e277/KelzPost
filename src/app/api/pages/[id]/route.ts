@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, pages } from "@/db";
-import { getSession } from "@/lib/auth";
+import { requireUser } from "@/lib/current-user";
+import { refreshPublicPages } from "@/lib/revalidate";
 import { slugify } from "@/lib/utils";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,8 +13,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser("admin");
+  if (error) return error;
 
   const { id } = await params;
   const { title, content, slug: rawSlug } = await req.json();
@@ -31,14 +32,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     .where(eq(pages.id, id))
     .returning();
   if (!page) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  refreshPublicPages();
   return NextResponse.json(page);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser("admin");
+  if (error) return error;
 
   const { id } = await params;
   await db.delete(pages).where(eq(pages.id, id));
+  refreshPublicPages();
   return NextResponse.json({ ok: true });
 }

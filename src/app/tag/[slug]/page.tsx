@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, posts, postTags } from "@/db";
 import { absoluteUrl, getSettings } from "@/lib/site";
-import { ARCHIVE_PAGE_SIZE, livePosts, parsePage } from "@/lib/posts";
+import { ARCHIVE_PAGE_SIZE, cardRelations, livePosts, parsePage, toPostSummary } from "@/lib/posts";
 import { ArchiveListing } from "@/components/archive-listing";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +43,7 @@ export default async function TagPage({ params, searchParams }: Props) {
   const page = Math.min(parsePage(query.page), pageCount);
   const rows = await db.query.posts.findMany({
     where,
-    with: { category: true },
+    with: cardRelations,
     orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
     limit: ARCHIVE_PAGE_SIZE,
     offset: (page - 1) * ARCHIVE_PAGE_SIZE,
@@ -56,7 +56,7 @@ export default async function TagPage({ params, searchParams }: Props) {
       kind="Tag"
       name={tag.name}
       basePath={`/tag/${slug}`}
-      posts={rows}
+      posts={rows.map((p) => toPostSummary(p, settings.authorName))}
       total={total}
       page={page}
       pageCount={pageCount}

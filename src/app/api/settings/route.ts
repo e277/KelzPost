@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, settings as settingsTable } from "@/db";
 import { getSettings } from "@/lib/site";
 import { DEFAULT_SETTINGS } from "@/lib/defaults";
-import { getSession } from "@/lib/auth";
+import { requireUser } from "@/lib/current-user";
+import { refreshPublicPages } from "@/lib/revalidate";
 
 const FIELDS = [
   "blogTitle",
@@ -32,8 +33,8 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser("admin");
+  if (error) return error;
 
   const body = await req.json();
   const data: Partial<Record<(typeof FIELDS)[number], string>> = {};
@@ -48,5 +49,6 @@ export async function PUT(req: NextRequest) {
     .onConflictDoUpdate({ target: settingsTable.id, set: data })
     .returning();
 
+  refreshPublicPages();
   return NextResponse.json(settings);
 }

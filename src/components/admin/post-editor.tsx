@@ -3,13 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { Editor } from "@tiptap/react";
 import type { Category, Post } from "@/db/schema";
 import { useToast } from "@/components/toast";
 import { slugify, wordCount } from "@/lib/utils";
 import { uploadImage } from "@/lib/image";
 import { ImageUpload } from "./image-upload";
+import { RichTextEditor, useRichTextEditor } from "./rich-text-editor";
+import { RevisionHistory, type Revision } from "./revision-history";
 
 type PostWithCategory = Post & { category: Category | null };
+/** A team member the post can be credited to, with the name their posts show. */
+export type TeamMember = { id: string; name: string };
+/** Unsaved title, excerpt and body kept in this browser in case the tab closes. */
+type Backup = { title: string; excerpt: string; content: string; savedAt: number };
+
+/** How long after the last keystroke a draft is saved automatically. */
+const AUTOSAVE_DELAY_MS = 4000;
 
 /** A Date as the "YYYY-MM-DDTHH:mm" local-time string a datetime-local input expects. */
 function toLocalInput(date: Date | string | null | undefined): string {
@@ -23,33 +33,58 @@ function parseTagInput(raw: string): string[] {
   return raw.split(",").map((t) => t.trim()).filter(Boolean);
 }
 
-const TOOLBAR_BUTTONS: { cmd: string; title: string; label: React.ReactNode }[] = [
-  { cmd: "bold", title: "Bold", label: <b>B</b> },
-  { cmd: "italic", title: "Italic", label: <i>I</i> },
-  { cmd: "underline", title: "Underline", label: <u>U</u> },
-];
+const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length;
+const backupKey = (id: string | null) => `post-backup:${id ?? "new"}`;
+const timeOf = (d: Date | number) => new Date(d).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+function readBackup(id: string | null): Backup | null {
+  try {
+    const raw = localStorage.getItem(backupKey(id));
+    return raw ? (JSON.parse(raw) as Backup) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearBackups(...ids: (string | null)[]) {
+  try {
+    for (const id of ids) localStorage.removeItem(backupKey(id));
+  } catch {}
+}
 
 export function PostEditor({
   categories,
-  defaultAuthor,
   post,
   tags = [],
   allTags = [],
+  team,
+  canChooseAuthor,
+  currentUserId,
+  siteAuthorName,
 }: {
   categories: Category[];
-  defaultAuthor: string;
   post: PostWithCategory | null;
   tags?: string[];
   allTags?: string[];
+  team: TeamMember[];
+  /** Admins can credit a post to anyone on the team. */
+  canChooseAuthor: boolean;
+  currentUserId: string;
+  /** Settings → Author, shown for posts not credited to a team member. */
+  siteAuthorName: string;
 }) {
   const router = useRouter();
   const { showToast, toastElement } = useToast();
-  const editorRef = useRef<HTMLDivElement>(null);
 
+  // The post's id once it exists; a new post gets one on its first save (manual or automatic).
+  const [postId, setPostId] = useState<string | null>(post?.id ?? null);
+  const [savedStatus, setSavedStatus] = useState(post?.status || "draft");
+  const [savedPublishedAt, setSavedPublishedAt] = useState<Date | null>(post?.publishedAt ?? null);
   const [title, setTitle] = useState(post?.title || "");
   const [status, setStatus] = useState(post?.status || "draft");
-  // Empty means "the blog's author from Settings", so renaming the author there updates every such post.
-  const [author, setAuthor] = useState(post?.author && post.author !== defaultAuthor ? post.author : "");
+  const [authorId, setAuthorId] = useState(post ? post.authorId || "" : currentUserId);
+  // A guest author's name; empty means the team member the post is credited to.
+  const [author, setAuthor] = useState(post?.author || "");
   const [categoryId, setCategoryId] = useState(post?.categoryId || "");
   const [excerpt, setExcerpt] = useState(post?.excerpt || "");
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
@@ -64,13 +99,38 @@ export function PostEditor({
   const [words, setWords] = useState(() => wordCount(post?.content || ""));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [lastSaved, setLastSaved] = useState<{ at: number; auto: boolean } | null>(null);
+  const [autosaveFailed, setAutosaveFailed] = useState(false);
+  const [backup, setBackup] = useState<Backup | null>(null);
+  // Counts edits, so a save only clears "unsaved changes" if nothing changed while it ran.
+  const [changes, setChanges] = useState(0);
+  const changesRef = useRef(0);
 
-  useEffect(() => {
-    if (editorRef.current && post?.content) {
-      editorRef.current.innerHTML = post.content;
-    }
-  }, [post]);
+  const markDirty = useCallback(() => {
+    changesRef.current += 1;
+    setChanges(changesRef.current);
+    setDirty(true);
+  }, []);
+
+  const { editor, insertImages } = useRichTextEditor({
+    content: post?.content || "",
+    placeholder: "Start writing your article here…",
+    onUpdate: (e) => {
+      setWords(countWords(e.getText()));
+      markDirty();
+    },
+    // Offer to bring back unsaved work left in this browser (e.g. the tab closed before a save).
+    onCreate: (e: Editor) => {
+      const found = readBackup(post?.id ?? null);
+      if (!found) return;
+      const differs = found.title !== (post?.title || "") || found.excerpt !== (post?.excerpt || "") || found.content !== e.getHTML();
+      const newer = !post || found.savedAt > new Date(post.updatedAt).getTime();
+      if (differs && newer) setBackup(found);
+      else clearBackups(post?.id ?? null);
+    },
+    uploadImage,
+    onError: (m) => showToast(m, "error"),
+  });
 
   // Warn before leaving the page with unsaved changes.
   useEffect(() => {
@@ -82,119 +142,144 @@ export function PostEditor({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
-  const markDirty = () => setDirty(true);
+  // Keep a copy of unsaved writing in this browser, a second after each change.
+  useEffect(() => {
+    if (!dirty || !editor) return;
+    const timer = setTimeout(() => {
+      try {
+        const copy: Backup = { title, excerpt, content: editor.getHTML(), savedAt: Date.now() };
+        localStorage.setItem(backupKey(postId), JSON.stringify(copy));
+      } catch {}
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [changes, dirty, editor, title, excerpt, postId]);
 
-  const onContentInput = () => {
-    setWords(wordCount(editorRef.current?.innerHTML || ""));
+  const save = useCallback(
+    async (newStatus: string, { autosave = false }: { autosave?: boolean } = {}) => {
+      if (saving) return;
+      if (!title.trim()) {
+        if (!autosave) showToast("Please add a title.", "error");
+        return;
+      }
+      setSaving(true);
+      const startedAt = changesRef.current;
+
+      const payload = {
+        autosave,
+        title: title.trim(),
+        excerpt: excerpt.trim(),
+        content: !editor || editor.isEmpty ? "" : editor.getHTML(),
+        coverImage,
+        status: newStatus,
+        author: author.trim(),
+        ...(canChooseAuthor && { authorId }),
+        categoryId: categoryId || null,
+        slug: slug || slugify(title),
+        publishedAt: publishDate ? new Date(publishDate).toISOString() : "",
+        tags: parseTagInput(tagInput),
+        seoTitle: seoTitle.trim(),
+        seoDescription: seoDescription.trim(),
+        ogImage: ogImage.trim(),
+      };
+
+      const body = JSON.stringify(payload);
+      // Vercel rejects request bodies over 4.5 MB.
+      if (body.length > 4_200_000) {
+        setSaving(false);
+        if (autosave) setAutosaveFailed(true);
+        else showToast("This post is too large to save — try removing or using URLs for some images.", "error");
+        return;
+      }
+
+      const res = await fetch(postId ? `/api/posts/${postId}` : "/api/posts", {
+        method: postId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      }).catch(() => null);
+      setSaving(false);
+
+      if (!res || !res.ok) {
+        if (autosave) {
+          setAutosaveFailed(true);
+          return;
+        }
+        const data = res ? await res.json().catch(() => ({})) : {};
+        showToast(data.error || "Network error — your changes were not saved.", "error");
+        return;
+      }
+
+      const saved = await res.json();
+      setAutosaveFailed(false);
+      setSavedStatus(newStatus);
+      setStatus((s) => (autosave ? s : newStatus));
+      setSavedPublishedAt(saved.publishedAt ? new Date(saved.publishedAt) : null);
+      setLastSaved({ at: Date.now(), auto: autosave });
+      setSlug(saved.slug);
+      if (changesRef.current === startedAt) {
+        setDirty(false);
+        clearBackups(postId, saved.id);
+      }
+      if (!postId) {
+        // Stay on this page (no reload, so the cursor stays put) but give it the post's own address.
+        setPostId(saved.id);
+        window.history.replaceState(null, "", `/admin/posts/${saved.id}`);
+      }
+      if (autosave) return;
+
+      const goesLiveLater = newStatus === "published" && saved.publishedAt && new Date(saved.publishedAt) > new Date();
+      showToast(
+        goesLiveLater
+          ? `Scheduled for ${new Date(saved.publishedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.`
+          : newStatus === "published"
+            ? "Post published!"
+            : "Draft saved."
+      );
+      if (newStatus === "published" && saved.publishedAt) setPublishDate(toLocalInput(saved.publishedAt));
+    },
+    [saving, title, excerpt, editor, coverImage, author, canChooseAuthor, authorId, categoryId, slug, publishDate, tagInput, seoTitle, seoDescription, ogImage, postId, showToast]
+  );
+
+  // Drafts save themselves a few seconds after typing stops. Published posts don't,
+  // so half-finished edits never go live; their changes are kept in this browser instead.
+  const canAutosave = savedStatus === "draft" && status === "draft";
+  useEffect(() => {
+    if (!dirty || !canAutosave || saving || !title.trim()) return;
+    const timer = setTimeout(() => void save("draft", { autosave: true }), AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [changes, dirty, canAutosave, saving, title, save]);
+
+  const restoreContent = (next: { title: string; excerpt: string; content: string }) => {
+    setTitle(next.title);
+    setExcerpt(next.excerpt);
+    editor?.commands.setContent(next.content);
+    setWords(countWords(editor?.getText() || ""));
     markDirty();
   };
 
-  const insertImage = async (file: File) => {
-    try {
-      const src = await uploadImage(file);
-      editorRef.current?.focus();
-      document.execCommand("insertImage", false, src);
-      onContentInput();
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not insert image.", "error");
-    }
+  const restoreRevision = (revision: Revision) => {
+    restoreContent(revision);
+    const when = new Date(revision.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    showToast(canAutosave ? `Restored the version from ${when}.` : `Restored the version from ${when}. Update the post to keep it.`);
   };
-
-  const runCmd = (cmd: string) => {
-    editorRef.current?.focus();
-    if (cmd === "h2" || cmd === "h3") {
-      document.execCommand("formatBlock", false, cmd);
-    } else if (cmd === "blockquote") {
-      document.execCommand("formatBlock", false, "blockquote");
-    } else if (cmd === "pre") {
-      document.execCommand("formatBlock", false, "pre");
-    } else if (cmd === "p") {
-      document.execCommand("formatBlock", false, "p");
-    } else if (cmd === "createLink") {
-      const url = prompt("Enter URL:");
-      if (url) document.execCommand("createLink", false, url);
-    } else if (cmd === "insertImageUrl") {
-      const url = prompt("Image URL:");
-      if (url) document.execCommand("insertImage", false, url);
-    } else {
-      document.execCommand(cmd, false);
-    }
-    onContentInput();
-  };
-
-  const save = useCallback(async (newStatus: string) => {
-    if (saving) return;
-    if (!title.trim()) {
-      showToast("Please add a title.", "error");
-      return;
-    }
-    setSaving(true);
-
-    const payload = {
-      title: title.trim(),
-      excerpt: excerpt.trim(),
-      content: editorRef.current?.innerHTML || "",
-      coverImage,
-      status: newStatus,
-      author: author.trim() === defaultAuthor ? "" : author.trim(),
-      categoryId: categoryId || null,
-      slug: slug || slugify(title),
-      publishedAt: publishDate ? new Date(publishDate).toISOString() : "",
-      tags: parseTagInput(tagInput),
-      seoTitle: seoTitle.trim(),
-      seoDescription: seoDescription.trim(),
-      ogImage: ogImage.trim(),
-    };
-
-    const body = JSON.stringify(payload);
-    // Vercel rejects request bodies over 4.5 MB.
-    if (body.length > 4_200_000) {
-      setSaving(false);
-      showToast("This post is too large to save — try removing or using URLs for some images.", "error");
-      return;
-    }
-
-    const res = await fetch(post ? `/api/posts/${post.id}` : "/api/posts", {
-      method: post ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    }).catch(() => null);
-
-    if (!res) {
-      setSaving(false);
-      showToast("Network error — your changes were not saved.", "error");
-      return;
-    }
-
-    setSaving(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      showToast(data.error || "Failed to save post.", "error");
-      return;
-    }
-
-    setStatus(newStatus);
-    setDirty(false);
-    const saved = await res.json();
-    const goesLiveLater = newStatus === "published" && saved.publishedAt && new Date(saved.publishedAt) > new Date();
-    showToast(
-      goesLiveLater
-        ? `Scheduled for ${new Date(saved.publishedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.`
-        : newStatus === "published"
-          ? "Post published!"
-          : "Draft saved."
-    );
-    if (newStatus === "published" && saved.publishedAt) setPublishDate(toLocalInput(saved.publishedAt));
-
-    setSlug(saved.slug);
-    if (!post) router.replace(`/admin/posts/${saved.id}`);
-    router.refresh();
-  }, [saving, title, excerpt, coverImage, author, defaultAuthor, categoryId, slug, publishDate, tagInput, seoTitle, seoDescription, ogImage, post, router, showToast]);
 
   const scheduled = !!publishDate && new Date(publishDate) > new Date();
-  const isLiveNow = post?.status === "published" && !!post.publishedAt && new Date(post.publishedAt) <= new Date();
+  const isLiveNow = savedStatus === "published" && !!savedPublishedAt && savedPublishedAt <= new Date();
   const metaTitle = seoTitle.trim() || title.trim() || "Post title";
   const metaDescription = seoDescription.trim() || excerpt.trim() || "Add an excerpt or meta description to control this text.";
+  const creditedName = team.find((m) => m.id === authorId)?.name || siteAuthorName;
+  const saveState = saving
+    ? "Saving…"
+    : autosaveFailed
+      ? "Couldn't save automatically. Your changes are kept in this browser."
+      : dirty
+        ? canAutosave
+          ? "Unsaved changes"
+          : "Unsaved changes (kept in this browser until you update)"
+        : lastSaved
+          ? `${lastSaved.auto ? "Saved automatically" : "Saved"} at ${timeOf(lastSaved.at)}`
+          : postId
+            ? "All changes saved"
+            : "";
 
   // Ctrl/Cmd+S saves, keeping the current status.
   useEffect(() => {
@@ -209,10 +294,11 @@ export function PostEditor({
   }, [save, status]);
 
   const handleDelete = async () => {
-    if (!post) return;
-    const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
+    if (!postId) return;
+    const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
     if (res.ok) {
       setDirty(false);
+      clearBackups(postId);
       router.push("/admin");
     } else {
       showToast("Failed to delete post.", "error");
@@ -221,6 +307,35 @@ export function PostEditor({
 
   return (
     <>
+      {backup && (
+        <div className="admin-alert editor-backup" role="alert">
+          <span>
+            <strong>Unsaved changes found.</strong> This browser kept edits from {new Date(backup.savedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} that were never saved.
+          </span>
+          <span className="editor-backup__actions">
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={() => {
+                restoreContent(backup);
+                setBackup(null);
+              }}
+            >
+              Restore them
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => {
+                clearBackups(postId);
+                setBackup(null);
+              }}
+            >
+              Discard
+            </button>
+          </span>
+        </div>
+      )}
       <div className="editor-layout">
         <div>
           <div className="editor-card" style={{ marginBottom: 20 }}>
@@ -237,100 +352,12 @@ export function PostEditor({
                 }}
               />
 
-              <div className="editor-toolbar">
-                {TOOLBAR_BUTTONS.map((b) => (
-                  <button key={b.cmd} type="button" className="toolbar-btn" title={b.title} onMouseDown={(e) => { e.preventDefault(); runCmd(b.cmd); }}>
-                    {b.label}
-                  </button>
-                ))}
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Heading 2" onMouseDown={(e) => { e.preventDefault(); runCmd("h2"); }}>
-                  H2
-                </button>
-                <button type="button" className="toolbar-btn" title="Heading 3" onMouseDown={(e) => { e.preventDefault(); runCmd("h3"); }}>
-                  H3
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Bullet List" onMouseDown={(e) => { e.preventDefault(); runCmd("insertUnorderedList"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M4 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm0 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM7 4h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2z" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Numbered List" onMouseDown={(e) => { e.preventDefault(); runCmd("insertOrderedList"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M3 4h1v3H3V4zm0 5h1.5l-1.5 2h1.5v1H3v-1l1.5-2H3V9zm1 6H3v-1h2v4H3v-1h1v-2zM7 4h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2zm0 6h10a1 1 0 0 1 0 2H7a1 1 0 0 1 0-2z" />
-                  </svg>
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Blockquote" onMouseDown={(e) => { e.preventDefault(); runCmd("blockquote"); }}>
-                  <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
-                    <path d="M6 3a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3H5a1 1 0 0 0 1 1h1a1 1 0 0 1 0 2H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zm8 0a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3h-1a1 1 0 0 0 1 1h1a1 1 0 0 1 0 2h-1a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Insert Link" onMouseDown={(e) => { e.preventDefault(); runCmd("createLink"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Remove Link" onMouseDown={(e) => { e.preventDefault(); runCmd("unlink"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    <line x1="2" y1="2" x2="18" y2="18" />
-                  </svg>
-                </button>
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Insert image (upload)" onMouseDown={(e) => { e.preventDefault(); imageInputRef.current?.click(); }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="m21 15-5-5L5 21" />
-                  </svg>
-                </button>
-                <button type="button" className="toolbar-btn" title="Insert image from URL" onMouseDown={(e) => { e.preventDefault(); runCmd("insertImageUrl"); }}>
-                  URL
-                </button>
-                <button type="button" className="toolbar-btn" title="Code block" onMouseDown={(e) => { e.preventDefault(); runCmd("pre"); }}>
-                  {"</>"}
-                </button>
-                <button type="button" className="toolbar-btn" title="Divider" onMouseDown={(e) => { e.preventDefault(); runCmd("insertHorizontalRule"); }}>
-                  —
-                </button>
-                <button type="button" className="toolbar-btn" title="Normal paragraph" onMouseDown={(e) => { e.preventDefault(); runCmd("p"); }}>
-                  ¶
-                </button>
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) insertImage(file);
-                    e.target.value = "";
-                  }}
-                />
-                <div className="toolbar-sep" />
-                <button type="button" className="toolbar-btn" title="Clear Formatting" onMouseDown={(e) => { e.preventDefault(); runCmd("removeFormat"); }}>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14">
-                    <path d="M6 4l8 12M4 4h12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div
-                ref={editorRef}
-                className="editor-area"
-                contentEditable
-                onInput={onContentInput}
-                data-placeholder="Start writing your article here…"
-              />
+              <RichTextEditor editor={editor} insertImages={insertImages} onError={(m) => showToast(m, "error")} />
               <div className="editor-statusbar">
                 <span>
                   {words.toLocaleString()} words · {Math.max(1, Math.round(words / 225))} min read
                 </span>
-                <span>{saving ? "Saving…" : dirty ? "Unsaved changes" : post ? "All changes saved" : ""} · Ctrl/⌘+S to save</span>
+                <span aria-live="polite">{saveState}{saveState ? " · " : ""}Ctrl/⌘+S to save</span>
               </div>
             </div>
           </div>
@@ -348,9 +375,9 @@ export function PostEditor({
                   {scheduled ? (status === "published" ? "Update Schedule" : "Schedule") : status === "published" ? "Update" : "Publish"}
                 </button>
               </div>
-              {post && (
+              {postId && (
                 <Link
-                  href={isLiveNow ? `/post/${slug}` : `/admin/posts/${post.id}/preview`}
+                  href={isLiveNow ? `/post/${slug}` : `/admin/posts/${postId}/preview`}
                   target="_blank"
                   className="btn btn--ghost btn--sm btn--full"
                   style={{ marginBottom: 18, justifyContent: "center" }}
@@ -379,10 +406,23 @@ export function PostEditor({
                     : "Leave empty to publish now, or pick a future date to schedule."}
                 </small>
               </div>
+              {canChooseAuthor && (
+                <div className="form-group">
+                  <label htmlFor="postAuthorId">Written by</label>
+                  <select id="postAuthorId" value={authorId} onChange={(e) => { setAuthorId(e.target.value); markDirty(); }}>
+                    <option value="">{siteAuthorName} (blog author from Settings)</option>
+                    {team.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label htmlFor="postAuthor">Author</label>
-                <input type="text" id="postAuthor" placeholder={defaultAuthor || "Author name"} value={author} onChange={(e) => { setAuthor(e.target.value); markDirty(); }} />
-                <small className="field-hint">Leave empty to use the author name from Settings ({defaultAuthor || "not set"}). Fill in only for guest authors.</small>
+                <label htmlFor="postAuthor">Guest author</label>
+                <input type="text" id="postAuthor" placeholder={creditedName || "Author name"} value={author} onChange={(e) => { setAuthor(e.target.value); markDirty(); }} />
+                <small className="field-hint">Leave empty to show {creditedName || "the author"}. Fill in only for a guest writer.</small>
               </div>
             </div>
           </div>
@@ -499,7 +539,11 @@ export function PostEditor({
             </div>
           </div>
 
-          {post && (
+          {postId && (
+            <RevisionHistory postId={postId} onRestore={restoreRevision} onError={(m) => showToast(m, "error")} />
+          )}
+
+          {postId && (
             <div className="editor-card">
               <div className="editor-card__header" style={{ color: "var(--red)" }}>
                 Danger Zone

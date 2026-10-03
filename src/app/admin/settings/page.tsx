@@ -3,10 +3,12 @@ import { db, postTags, tags } from "@/db";
 import { getSettings } from "@/lib/site";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { SettingsForm } from "@/components/admin/settings-form";
+import { requirePageUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
+  await requirePageUser("admin");
   const [settings, categories, tagRows] = await Promise.all([
     getSettings(),
     db.query.categories.findMany({ orderBy: (c, { asc }) => asc(c.order) }),

@@ -1,12 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { and, asc, eq } from "drizzle-orm";
-import { comments as commentsTable, db } from "@/db";
+import { and, asc, desc, eq, ne, notInArray, sql } from "drizzle-orm";
+import { comments as commentsTable, db, posts } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { isMailerConfigured } from "@/lib/mailer";
 import { formatDate, summarize, readingTime } from "@/lib/utils";
-import { getPostTags, isLive, livePosts, withHeadingAnchors } from "@/lib/posts";
+import {
+  cardRelations,
+  getPostTags,
+  isLive,
+  livePosts,
+  postAuthorProfile,
+  postByline,
+  postPageRelations,
+  renderPostBody,
+  toPostSummary,
+} from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PostArticle } from "@/components/post-article";
@@ -16,9 +26,19 @@ import { ReadingProgress } from "@/components/reading-progress";
 import { AuthorBox } from "@/components/author-box";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 import { PostComments, type PublicComment } from "@/components/post-comments";
+import { ViewTracker } from "@/components/view-tracker";
+
+// Served from cache and rebuilt in the background at most once a minute (so
+// scheduled posts appear on time); edits in the admin refresh it straight away.
+export const revalidate = 60;
+
+// Pages are built the first time they're visited, then cached (see revalidate).
+export function generateStaticParams() {
+  return [];
+}
 
 async function getPublishedPost(slug: string) {
-  const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
+  const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: postPageRelations });
   return post && isLive(post) ? post : null;
 }
 
@@ -45,6 +65,40 @@ async function getComments(postId: string): Promise<{ threads: PublicComment[]; 
   const replies = rows.filter((c) => c.parentId && threads.has(c.parentId));
   for (const c of replies) threads.get(c.parentId!)!.replies.push(toPublic(c));
   return { threads: [...threads.values()], count: threads.size + replies.length };
+}
+
+/** The next newer and next older live posts, for the "Previous / Next" links. */
+async function getNeighbours(post: { publishedAt: Date | null; createdAt: Date }) {
+  // Same order as listings: newest publish date first, then newest created.
+  const key = sql`(${posts.publishedAt}, ${posts.createdAt})`;
+  const here = sql`(${(post.publishedAt ?? post.createdAt).toISOString()}::timestamp(3), ${post.createdAt.toISOString()}::timestamp(3))`;
+  const columns = { slug: true, title: true } as const;
+  const [newer, older] = await Promise.all([
+    db.query.posts.findFirst({ where: and(livePosts(), sql`${key} > ${here}`), columns, orderBy: [asc(posts.publishedAt), asc(posts.createdAt)] }),
+    db.query.posts.findFirst({ where: and(livePosts(), sql`${key} < ${here}`), columns, orderBy: [desc(posts.publishedAt), desc(posts.createdAt)] }),
+  ]);
+  return { newer: newer ?? null, older: older ?? null };
+}
+
+/** Up to 3 more posts: the same category first, then the most recent. */
+async function getRelated(post: { id: string; categoryId: string | null }) {
+  const order = [desc(posts.publishedAt), desc(posts.createdAt)];
+  const sameCategory = post.categoryId
+    ? await db.query.posts.findMany({
+        where: and(livePosts(), eq(posts.categoryId, post.categoryId), ne(posts.id, post.id)),
+        with: cardRelations,
+        orderBy: order,
+        limit: 3,
+      })
+    : [];
+  if (sameCategory.length >= 3) return sameCategory;
+  const recent = await db.query.posts.findMany({
+    where: and(livePosts(), notInArray(posts.id, [post.id, ...sameCategory.map((p) => p.id)])),
+    with: cardRelations,
+    orderBy: order,
+    limit: 3 - sameCategory.length,
+  });
+  return [...sameCategory, ...recent];
 }
 
 /** Share image: the post's own, then a hosted cover image, then the generated card. */
@@ -79,7 +133,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       siteName: settings.blogTitle,
       publishedTime: (post.publishedAt || post.createdAt).toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
-      authors: [post.author || settings.authorName],
+      authors: [postByline(post, settings.authorName).name],
       section: post.category?.name,
       tags: tags.map((t) => t.name),
       images: [image],
@@ -104,22 +158,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   if (!post) notFound();
 
   const [tags, comments] = await Promise.all([getPostTags(post.id), getComments(post.id)]);
-  const { html, toc } = withHeadingAnchors(post.content);
+  const { html, toc } = renderPostBody(post.content);
+  const byline = postByline(post, settings.authorName);
+  const author = postAuthorProfile(post, settings);
 
-  // Chronological neighbours and up to 3 related posts (same category first, then most recent).
-  const published = await db.query.posts.findMany({
-    where: livePosts(),
-    with: { category: true },
-    orderBy: (p, { desc }) => [desc(p.publishedAt), desc(p.createdAt)],
-  });
-  const index = published.findIndex((p) => p.id === post.id);
-  const newer = index > 0 ? published[index - 1] : null;
-  const older = index >= 0 && index < published.length - 1 ? published[index + 1] : null;
-  const others = published.filter((p) => p.id !== post.id);
-  const related = [
-    ...others.filter((p) => post.categoryId && p.categoryId === post.categoryId),
-    ...others.filter((p) => !post.categoryId || p.categoryId !== post.categoryId),
-  ].slice(0, 3);
+  const [{ newer, older }, related] = await Promise.all([getNeighbours(post), getRelated(post)]);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -131,7 +174,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     articleSection: post.category?.name,
     datePublished: (post.publishedAt || post.createdAt).toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: { "@type": "Person", name: post.author || settings.authorName, url: absoluteUrl("/about") },
+    author: { "@type": "Person", name: author.name, ...(author.href && { url: absoluteUrl(author.href) }) },
     publisher: { "@type": "Organization", name: settings.blogTitle, url: absoluteUrl("/") },
     mainEntityOfPage: absoluteUrl(`/post/${post.slug}`),
     timeRequired: `PT${readingTime(post.content)}M`,
@@ -141,6 +184,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   return (
     <>
       <ReadingProgress />
+      <ViewTracker postId={post.id} />
       <SiteHeader settings={settings} />
 
       <main>
@@ -152,9 +196,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             Back to Blog
           </Link>
 
-          <PostArticle post={post} categories={categories} authorName={settings.authorName} tags={tags} bodyHtml={html} toc={toc} />
+          <PostArticle post={post} categories={categories} byline={byline} tags={tags} bodyHtml={html} toc={toc} />
 
-          <AuthorBox settings={settings} name={post.author || settings.authorName} />
+          <AuthorBox author={author} />
 
           {isMailerConfigured() && <NewsletterSignup blogTitle={settings.blogTitle} />}
 
@@ -192,7 +236,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             <h2 className="related__title">Keep reading</h2>
             <div className="posts-grid related__grid">
               {related.map((p) => (
-                <PostCard key={p.id} post={p} categories={categories} authorName={settings.authorName} />
+                <PostCard key={p.id} post={toPostSummary(p, settings.authorName)} categories={categories} />
               ))}
             </div>
           </section>

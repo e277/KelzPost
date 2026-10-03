@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, subscribers } from "@/db";
-import { getSession } from "@/lib/auth";
+import { requireUser } from "@/lib/current-user";
 
 /** Permanently removes a subscriber from the list. */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await requireUser("admin");
+  if (error) return error;
 
   const { id } = await params;
   await db.delete(subscribers).where(eq(subscribers.id, id));
