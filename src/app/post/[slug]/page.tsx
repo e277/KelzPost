@@ -5,7 +5,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { comments as commentsTable, db } from "@/db";
 import { getSettings, absoluteUrl } from "@/lib/site";
 import { isMailerConfigured } from "@/lib/mailer";
-import { summarize, readingTime } from "@/lib/utils";
+import { formatDate, summarize, readingTime } from "@/lib/utils";
 import { getPostTags, isLive, livePosts, withHeadingAnchors } from "@/lib/posts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -15,6 +15,7 @@ import { ShareButtons } from "@/components/share-buttons";
 import { ReadingProgress } from "@/components/reading-progress";
 import { AuthorBox } from "@/components/author-box";
 import { NewsletterSignup } from "@/components/newsletter-signup";
+import { PostComments, type PublicComment } from "@/components/post-comments";
 
 async function getPublishedPost(slug: string) {
   const post = await db.query.posts.findFirst({ where: (p, { eq }) => eq(p.slug, slug), with: { category: true } });
